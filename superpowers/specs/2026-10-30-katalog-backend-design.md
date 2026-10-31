@@ -157,8 +157,10 @@ PostgreSQL). Template conventions win wherever the RAML is silent.
   - When `now >= next_checkin_at`: create `Checkin` (channel `email` if
     `verify_by_email` else `in_app`), send email and/or notification, move
     `next_checkin_at` forward by the interval, state `warning`.
-  - When unanswered check-ins since the last response reach
-    `missed_checkins_limit`: with a trustee, state `pending_trustee` and a
+  - A check-in counts as missed once it has gone one full interval
+    unanswered (sent at T, missed from T + interval). When missed check-ins
+    since the last response reach `missed_checkins_limit` (decided before
+    any further check-in is sent): with a trustee, state `pending_trustee` and a
     `TrusteeConfirmation` with an emailed link
     `{FRONTEND_BASE_URL}/trustee/{token}`; without a trustee, release when
     `grace_period_days` have passed since the limit was reached.
