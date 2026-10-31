@@ -152,10 +152,10 @@ Accounts that are suspended or deleted cannot sign in: login answers
 | `invalid_credentials` | 400 | `POST /auth/login` | Unknown email, wrong password, or an account that may not sign in. | Show "email or password is wrong". |
 | `invalid_token` | 400 | `POST /auth/logout` | The refresh token is not a live refresh token of this user. | Clear local tokens anyway. |
 | `no_code` | 400 | `/auth/otp/verify`, `/auth/password/reset`, `/r/{token}/verify` | There is no active code for this email and purpose (never sent, already used, or replaced). | Offer "send a new code". |
-| `expired` | 400 | same | The code is older than 5 minutes. | Offer "send a new code". |
+| `expired` | 400 | same | The code is older than 5 minutes (server default, `VERIFICATION_CODE_TTL_MINUTES`). | Offer "send a new code". |
 | `invalid` | 400 | same | Wrong code. The message says how many attempts are left. | Let the user try again. |
-| `attempts_exhausted` | 400 | same | 5 wrong guesses: the code is spent. | Offer "send a new code". |
-| `invalid_reset_token` | 400 | `POST /auth/password/reset` | The `reset_token` is unknown, used or older than 10 minutes. | Restart the reset flow. |
+| `attempts_exhausted` | 400 | same | 5 wrong guesses (server default, `VERIFICATION_CODE_MAX_ATTEMPTS`): the code is spent. | Offer "send a new code". |
+| `invalid_reset_token` | 400 | `POST /auth/password/reset` | The `reset_token` is unknown, used or older than 10 minutes (server default, `PASSWORD_RESET_TOKEN_TTL_MINUTES`). | Restart the reset flow. |
 | `old_pin_required` | 400 | `POST /me/pin` | A PIN is already set; changing it needs `old_pin`. | Ask for the current PIN. |
 | `invalid_pin` | 400 | `POST /me/pin` | `old_pin` is wrong. | Ask again. |
 | `self_contact_exists` | 400 | `POST /contacts` | There is already an `is_self` contact. | Use the existing one. |
@@ -578,7 +578,11 @@ Auth: no. Active plans by price, `business` last. 200 `data`: array of Plan
 | `free` | 0.00 | 3 | 100 | 1 |
 | `monthly` | 4.99 | 50 | 2048 | 5 |
 | `one_time` | 49.00 | 100 | 5120 | 25 |
-| `business` | custom | 1000 | 51200 | 50 |
+| `business` | 0.00 (by arrangement) | 1000 | 51200 | 50 |
+
+The `business` plan's `price` is `0.00` and its `billing_period` is
+`custom`: the price is agreed per customer, so show "by arrangement" (or a
+contact form, `POST /business-leads`) instead of the number.
 
 ### 6.4 Contacts
 
@@ -1106,6 +1110,12 @@ permissions. They are listed in Swagger under the Admin tag.
    (at most once a minute).
 4. `GET /me`: `email_verified_at` is now set.
 
+A code is valid for 5 minutes and allows 5 wrong guesses. Both are server
+defaults the operator can change (`VERIFICATION_CODE_TTL_MINUTES`,
+`VERIFICATION_CODE_MAX_ATTEMPTS`), so read the `invalid` message for the
+attempts left rather than counting in the app. The same applies to the
+reset token's 10 minutes in 7.2 (`PASSWORD_RESET_TOKEN_TTL_MINUTES`).
+
 Until step 2, the user can use the app (contacts, messages), but nothing
 reaches their in-app inbox: other people's contacts are linked to the
 account only once its email is verified.
@@ -1190,7 +1200,10 @@ messages appear as soon as someone looks. Expect:
   or job run.
 - `date`/`occasion` email: within about 5 minutes after `deliver_at`.
 
-Accounts that are suspended or deleted do not release dated messages.
+Accounts that are suspended, deactivated by an admin or deleted release
+nothing scheduled, dated or inactivity. An admin deactivation keeps the
+account's messages and media and can be undone; the inactivity switch
+stays off until the user turns it on again.
 
 ### 7.5 Recipient link
 
