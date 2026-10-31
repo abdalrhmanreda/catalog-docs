@@ -66,6 +66,140 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/admin/control/deliveries:
+    get:
+      operationId: admin_control_deliveries_list
+      description: |-
+        GET /api/v1/admin/control/deliveries
+
+        Paginated. Failed and queued deliveries come first (the ones that may need
+        a retry), then the rest; newest first within each group.
+      summary: List deliveries
+      parameters:
+      - in: query
+        name: channel
+        schema:
+          type: string
+          enum:
+          - email
+          - in_app
+      - in: query
+        name: message
+        schema:
+          type: string
+        description: Message id (UUID).
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Opt-in paging. Without it the endpoint returns a bare array of
+          every item. With it, `data` is `{count, next, previous, results}`. Capped
+          at 200.
+        schema:
+          type: integer
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - delivered
+          - failed
+          - opened
+          - queued
+          - sent
+      tags:
+      - Admin
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status_code:
+                    type: integer
+                    example: 200
+                  data:
+                    $ref: '#/components/schemas/PaginatedAdminDeliveryRowList'
+                  error:
+                    nullable: true
+                    description: Always null on success.
+                    example: null
+                required:
+                - status_code
+                - data
+                - error
+          description: ''
+        '401':
+          description: 'Missing, invalid or expired access token, or the account can
+            no longer sign in. error.code: `unauthorized`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/admin/control/deliveries/{id}/retry:
+    post:
+      operationId: admin_control_deliveries_retry_create
+      description: |-
+        POST /api/v1/admin/control/deliveries/<id>/retry
+
+        Sends a `failed` or `queued` e-mail delivery of a live message again, now,
+        through the resend path process_due uses: a fresh link token (never
+        returned), attempts + 1, and the delivery ends `sent` or `failed`. A send
+        that fails is a 200 with status `failed` and the new `last_error`.
+
+        This is an explicit human override, so it is not bound by the automatic
+        five-attempt cap (MAX_EMAIL_ATTEMPTS): it may run past it, and still
+        counts the attempt. Anything else (in-app, already sent, deleted message,
+        a contact with no address) is 400 `invalid_state`. Audited as
+        DELIVERY_RETRIED.
+      summary: Retry a delivery
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Admin
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status_code:
+                    type: integer
+                    example: 200
+                  data:
+                    $ref: '#/components/schemas/AdminDeliveryRow'
+                  error:
+                    nullable: true
+                    description: Always null on success.
+                    example: null
+                required:
+                - status_code
+                - data
+                - error
+          description: ''
+        '401':
+          description: 'Missing, invalid or expired access token, or the account can
+            no longer sign in. error.code: `unauthorized`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
   /api/v1/admin/control/deployments:
     get:
       operationId: admin_control_deployments_list
@@ -347,6 +481,149 @@ paths:
                   data:
                     type: object
                     additionalProperties: {}
+                  error:
+                    nullable: true
+                    description: Always null on success.
+                    example: null
+                required:
+                - status_code
+                - data
+                - error
+          description: ''
+        '401':
+          description: 'Missing, invalid or expired access token, or the account can
+            no longer sign in. error.code: `unauthorized`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/admin/control/messages:
+    get:
+      operationId: admin_control_messages_list
+      description: |-
+        GET /api/v1/admin/control/messages
+
+        Every message, soft-deleted ones included (`deleted_at` says so), newest
+        first, paginated. `recipient_count` counts recipients whose contact is not
+        deleted; `deliveries` is the number of deliveries per status.
+      summary: List messages (metadata only)
+      parameters:
+      - in: query
+        name: channel
+        schema:
+          type: string
+          enum:
+          - email
+          - in_app
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Opt-in paging. Without it the endpoint returns a bare array of
+          every item. With it, `data` is `{count, next, previous, results}`. Capped
+          at 200.
+        schema:
+          type: integer
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Matches the title.
+      - in: query
+        name: sender
+        schema:
+          type: string
+        description: Sender user id (UUID).
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - draft
+          - failed
+          - opened
+          - paused
+          - queued
+          - scheduled
+          - sent
+      - in: query
+        name: trigger_type
+        schema:
+          type: string
+          enum:
+          - date
+          - inactivity
+          - instant
+          - occasion
+      tags:
+      - Admin
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status_code:
+                    type: integer
+                    example: 200
+                  data:
+                    $ref: '#/components/schemas/PaginatedAdminMessageList'
+                  error:
+                    nullable: true
+                    description: Always null on success.
+                    example: null
+                required:
+                - status_code
+                - data
+                - error
+          description: ''
+        '401':
+          description: 'Missing, invalid or expired access token, or the account can
+            no longer sign in. error.code: `unauthorized`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/admin/control/messages/{id}:
+    get:
+      operationId: admin_control_messages_retrieve
+      description: |-
+        GET /api/v1/admin/control/messages/<id>
+
+        The list row plus `media_count` and the message's deliveries, each with
+        the contact masked to its initial and relation.
+      summary: Message detail (metadata only)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Admin
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status_code:
+                    type: integer
+                    example: 200
+                  data:
+                    $ref: '#/components/schemas/AdminMessageDetail'
                   error:
                     nullable: true
                     description: Always null on success.
@@ -6307,6 +6584,129 @@ components:
           description: A new access token, valid 15 minutes.
       required:
       - access
+    AdminDelivery:
+      type: object
+      description: One delivery of a message. Expects `contact` selected.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        contact:
+          allOf:
+          - $ref: '#/components/schemas/AdminMaskedContact'
+          readOnly: true
+        channel:
+          allOf:
+          - $ref: '#/components/schemas/ChannelEnum'
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/DeliveryStatusEnum'
+          readOnly: true
+        attempts:
+          type: integer
+          readOnly: true
+        last_error:
+          type: string
+          readOnly: true
+        sent_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        opened_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        open_later_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - attempts
+      - channel
+      - contact
+      - id
+      - last_error
+      - open_later_at
+      - opened_at
+      - sent_at
+      - status
+    AdminDeliveryMessage:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        sender_email:
+          type: string
+          format: email
+      required:
+      - id
+      - sender_email
+      - title
+    AdminDeliveryRow:
+      type: object
+      description: A delivery in the deliveries table. Expects `contact` and `message__sender`
+        selected.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        contact:
+          allOf:
+          - $ref: '#/components/schemas/AdminMaskedContact'
+          readOnly: true
+        channel:
+          allOf:
+          - $ref: '#/components/schemas/ChannelEnum'
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/DeliveryStatusEnum'
+          readOnly: true
+        attempts:
+          type: integer
+          readOnly: true
+        last_error:
+          type: string
+          readOnly: true
+        sent_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        opened_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        open_later_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        message:
+          allOf:
+          - $ref: '#/components/schemas/AdminDeliveryMessage'
+          readOnly: true
+      required:
+      - attempts
+      - channel
+      - contact
+      - id
+      - last_error
+      - message
+      - open_later_at
+      - opened_at
+      - sent_at
+      - status
     AdminLegalDocument:
       type: object
       properties:
@@ -6386,6 +6786,187 @@ components:
       required:
       - slug
       - title
+    AdminMaskedContact:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name_initial:
+          type: string
+          description: First letter of the name and ".", or "?" without one.
+        relation:
+          type: string
+      required:
+      - id
+      - name_initial
+      - relation
+    AdminMessage:
+      type: object
+      description: |-
+        A message row. Expects `sender` selected and `recipient_count` plus one
+        `n_<status>` per delivery status annotated (see views.messages).
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        sender:
+          allOf:
+          - $ref: '#/components/schemas/AdminSender'
+          readOnly: true
+        type:
+          allOf:
+          - $ref: '#/components/schemas/MessageTypeEnum'
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/MessageStatusEnum'
+          readOnly: true
+        trigger_type:
+          allOf:
+          - $ref: '#/components/schemas/TriggerTypeEnum'
+          readOnly: true
+        channel:
+          allOf:
+          - $ref: '#/components/schemas/ChannelEnum'
+          readOnly: true
+        deliver_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        sent_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        deleted_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        recipient_count:
+          type: integer
+          description: Recipients whose contact is not deleted.
+        deliveries:
+          type: object
+          additionalProperties:
+            type: integer
+          description: Deliveries by status.
+          readOnly: true
+      required:
+      - channel
+      - created_at
+      - deleted_at
+      - deliver_at
+      - deliveries
+      - id
+      - recipient_count
+      - sender
+      - sent_at
+      - status
+      - title
+      - trigger_type
+      - type
+    AdminMessageDetail:
+      type: object
+      description: The message row plus media count and every delivery. Expects `media_count`
+        annotated.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        sender:
+          allOf:
+          - $ref: '#/components/schemas/AdminSender'
+          readOnly: true
+        type:
+          allOf:
+          - $ref: '#/components/schemas/MessageTypeEnum'
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/MessageStatusEnum'
+          readOnly: true
+        trigger_type:
+          allOf:
+          - $ref: '#/components/schemas/TriggerTypeEnum'
+          readOnly: true
+        channel:
+          allOf:
+          - $ref: '#/components/schemas/ChannelEnum'
+          readOnly: true
+        deliver_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        sent_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        deleted_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        recipient_count:
+          type: integer
+          description: Recipients whose contact is not deleted.
+        deliveries:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminDelivery'
+          readOnly: true
+        media_count:
+          type: integer
+      required:
+      - channel
+      - created_at
+      - deleted_at
+      - deliver_at
+      - deliveries
+      - id
+      - media_count
+      - recipient_count
+      - sender
+      - sent_at
+      - status
+      - title
+      - trigger_type
+      - type
+    AdminSender:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        full_name:
+          type: string
+        email:
+          type: string
+          format: email
+      required:
+      - email
+      - full_name
+      - id
     AdminSupportCategory:
       type: object
       properties:
@@ -6687,6 +7268,7 @@ components:
       - PERMISSION_CHANGED
       - PASSWORD_RESET
       - SYSTEM_LOGS_PURGED
+      - DELIVERY_RETRIED
       type: string
       description: |-
         * `USER_CREATED` - User Created
@@ -6705,6 +7287,7 @@ components:
         * `PERMISSION_CHANGED` - Permission Changed
         * `PASSWORD_RESET` - Password Reset
         * `SYSTEM_LOGS_PURGED` - System Logs Purged
+        * `DELIVERY_RETRIED` - Delivery Retried
     AuthTokens:
       type: object
       properties:
@@ -6989,6 +7572,20 @@ components:
           maxLength: 2000
       required:
       - decision
+    DeliveryStatusEnum:
+      enum:
+      - queued
+      - sent
+      - delivered
+      - failed
+      - opened
+      type: string
+      description: |-
+        * `queued` - Queued
+        * `sent` - Sent
+        * `delivered` - Delivered
+        * `failed` - Failed
+        * `opened` - Opened
     Deployment:
       type: object
       properties:
@@ -7768,6 +8365,62 @@ components:
       - code
       - purpose
       - target
+    PaginatedAdminDeliveryRowList:
+      oneOf:
+      - type: array
+        items:
+          $ref: '#/components/schemas/AdminDeliveryRow'
+      - type: object
+        required:
+        - count
+        - results
+        properties:
+          count:
+            type: integer
+            example: 123
+          next:
+            type: string
+            nullable: true
+            format: uri
+            example: http://api.example.org/accounts/?page=4
+          previous:
+            type: string
+            nullable: true
+            format: uri
+            example: http://api.example.org/accounts/?page=2
+          results:
+            type: array
+            items:
+              $ref: '#/components/schemas/AdminDeliveryRow'
+      description: A bare array by default; the paged object when `page_size` is sent.
+    PaginatedAdminMessageList:
+      oneOf:
+      - type: array
+        items:
+          $ref: '#/components/schemas/AdminMessage'
+      - type: object
+        required:
+        - count
+        - results
+        properties:
+          count:
+            type: integer
+            example: 123
+          next:
+            type: string
+            nullable: true
+            format: uri
+            example: http://api.example.org/accounts/?page=4
+          previous:
+            type: string
+            nullable: true
+            format: uri
+            example: http://api.example.org/accounts/?page=2
+          results:
+            type: array
+            items:
+              $ref: '#/components/schemas/AdminMessage'
+      description: A bare array by default; the paged object when `page_size` is sent.
     PaginatedAdminUserList:
       oneOf:
       - type: array
