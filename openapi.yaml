@@ -307,6 +307,141 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/admin/control/inactivity:
+    get:
+      operationId: admin_control_inactivity_list
+      description: |-
+        GET /api/v1/admin/control/inactivity
+
+        Every user's switch, most recently changed first, paginated. An unknown
+        `state` matches nothing; a non-boolean `enabled` is 400.
+      summary: List inactivity switches
+      parameters:
+      - in: query
+        name: enabled
+        schema:
+          type: boolean
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Opt-in paging. Without it the endpoint returns a bare array of
+          every item. With it, `data` is `{count, next, previous, results}`. Capped
+          at 200.
+        schema:
+          type: integer
+      - in: query
+        name: state
+        schema:
+          type: string
+          enum:
+          - active
+          - cancelled
+          - pending_trustee
+          - released
+          - warning
+      tags:
+      - Admin
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status_code:
+                    type: integer
+                    example: 200
+                  data:
+                    $ref: '#/components/schemas/PaginatedAdminInactivityList'
+                  error:
+                    nullable: true
+                    description: Always null on success.
+                    example: null
+                required:
+                - status_code
+                - data
+                - error
+          description: ''
+        '401':
+          description: 'Missing, invalid or expired access token, or the account can
+            no longer sign in. error.code: `unauthorized`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/admin/control/inactivity/trustee-requests:
+    get:
+      operationId: admin_control_inactivity_trustee_requests_list
+      description: |-
+        GET /api/v1/admin/control/inactivity/trustee-requests
+
+        Newest first, paginated. The trustee is masked to an initial and relation
+        (null if the contact is gone); no token, hash, IP or note is sent. An
+        unknown `decision` matches nothing.
+      summary: List trustee requests
+      parameters:
+      - in: query
+        name: decision
+        schema:
+          type: string
+          enum:
+          - confirmed
+          - pending
+          - rejected
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Opt-in paging. Without it the endpoint returns a bare array of
+          every item. With it, `data` is `{count, next, previous, results}`. Capped
+          at 200.
+        schema:
+          type: integer
+      tags:
+      - Admin
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status_code:
+                    type: integer
+                    example: 200
+                  data:
+                    $ref: '#/components/schemas/PaginatedAdminTrusteeRequestList'
+                  error:
+                    nullable: true
+                    description: Always null on success.
+                    example: null
+                required:
+                - status_code
+                - data
+                - error
+          description: ''
+        '401':
+          description: 'Missing, invalid or expired access token, or the account can
+            no longer sign in. error.code: `unauthorized`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
   /api/v1/admin/control/logs:
     get:
       operationId: admin_control_logs_list
@@ -674,6 +809,243 @@ paths:
                 - data
                 - error
           description: ''
+        '401':
+          description: 'Missing, invalid or expired access token, or the account can
+            no longer sign in. error.code: `unauthorized`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/admin/control/plans:
+    get:
+      operationId: admin_control_plans_list
+      description: |-
+        GET/POST /api/v1/admin/control/plans
+
+        GET needs `plans.read`, POST `plans.create` (audited as PLAN_CREATED).
+        `code` must be one of the model's codes and not taken; `features` an object.
+      summary: List plans
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Opt-in paging. Without it the endpoint returns a bare array of
+          every item. With it, `data` is `{count, next, previous, results}`. Capped
+          at 200.
+        schema:
+          type: integer
+      tags:
+      - Admin
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status_code:
+                    type: integer
+                    example: 200
+                  data:
+                    $ref: '#/components/schemas/PaginatedAdminPlanList'
+                  error:
+                    nullable: true
+                    description: Always null on success.
+                    example: null
+                required:
+                - status_code
+                - data
+                - error
+          description: ''
+        '401':
+          description: 'Missing, invalid or expired access token, or the account can
+            no longer sign in. error.code: `unauthorized`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    post:
+      operationId: admin_control_plans_create
+      description: |-
+        GET/POST /api/v1/admin/control/plans
+
+        GET needs `plans.read`, POST `plans.create` (audited as PLAN_CREATED).
+        `code` must be one of the model's codes and not taken; `features` an object.
+      summary: Create a plan
+      tags:
+      - Admin
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminPlanRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status_code:
+                    type: integer
+                    example: 201
+                  data:
+                    $ref: '#/components/schemas/AdminPlan'
+                  error:
+                    nullable: true
+                    description: Always null on success.
+                    example: null
+                required:
+                - status_code
+                - data
+                - error
+          description: ''
+        '401':
+          description: 'Missing, invalid or expired access token, or the account can
+            no longer sign in. error.code: `unauthorized`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/admin/control/plans/{id}:
+    get:
+      operationId: admin_control_plans_retrieve
+      description: |-
+        GET/PATCH/DELETE /api/v1/admin/control/plans/<id>
+
+        PATCH is partial (`plans.update`, PLAN_UPDATED with only the changed
+        fields). Setting `is_active` false on a plan in use is fine: users keep
+        it, it just stops being offered. DELETE (`plans.delete`, PLAN_DELETED) is
+        400 `plan_in_use` while any live user is on the plan.
+      summary: Plan detail
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Admin
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status_code:
+                    type: integer
+                    example: 200
+                  data:
+                    $ref: '#/components/schemas/AdminPlan'
+                  error:
+                    nullable: true
+                    description: Always null on success.
+                    example: null
+                required:
+                - status_code
+                - data
+                - error
+          description: ''
+        '401':
+          description: 'Missing, invalid or expired access token, or the account can
+            no longer sign in. error.code: `unauthorized`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    patch:
+      operationId: admin_control_plans_partial_update
+      description: |-
+        GET/PATCH/DELETE /api/v1/admin/control/plans/<id>
+
+        PATCH is partial (`plans.update`, PLAN_UPDATED with only the changed
+        fields). Setting `is_active` false on a plan in use is fine: users keep
+        it, it just stops being offered. DELETE (`plans.delete`, PLAN_DELETED) is
+        400 `plan_in_use` while any live user is on the plan.
+      summary: Update a plan
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Admin
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAdminPlanRequest'
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status_code:
+                    type: integer
+                    example: 200
+                  data:
+                    $ref: '#/components/schemas/AdminPlan'
+                  error:
+                    nullable: true
+                    description: Always null on success.
+                    example: null
+                required:
+                - status_code
+                - data
+                - error
+          description: ''
+        '401':
+          description: 'Missing, invalid or expired access token, or the account can
+            no longer sign in. error.code: `unauthorized`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    delete:
+      operationId: admin_control_plans_destroy
+      description: |-
+        GET/PATCH/DELETE /api/v1/admin/control/plans/<id>
+
+        PATCH is partial (`plans.update`, PLAN_UPDATED with only the changed
+        fields). Setting `is_active` false on a plan in use is fine: users keep
+        it, it just stops being offered. DELETE (`plans.delete`, PLAN_DELETED) is
+        400 `plan_in_use` while any live user is on the plan.
+      summary: Delete an unused plan
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Admin
+      security:
+      - bearerAuth: []
+      responses:
+        '204':
+          description: No response body
         '401':
           description: 'Missing, invalid or expired access token, or the account can
             no longer sign in. error.code: `unauthorized`.'
@@ -6710,6 +7082,77 @@ components:
       - opened_at
       - sent_at
       - status
+    AdminInactivity:
+      type: object
+      description: 'One user''s switch. Expects `user` selected. No trustee identity:
+        only whether there is one.'
+      properties:
+        user:
+          allOf:
+          - $ref: '#/components/schemas/AdminInactivityUser'
+          readOnly: true
+        enabled:
+          type: boolean
+          readOnly: true
+        state:
+          allOf:
+          - $ref: '#/components/schemas/StateEnum'
+          readOnly: true
+        checkin_interval_days:
+          type: integer
+          readOnly: true
+        missed_checkins_limit:
+          type: integer
+          readOnly: true
+        grace_period_days:
+          type: integer
+          readOnly: true
+        has_trustee:
+          type: boolean
+          readOnly: true
+        next_checkin_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        limit_reached_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - checkin_interval_days
+      - enabled
+      - grace_period_days
+      - has_trustee
+      - limit_reached_at
+      - missed_checkins_limit
+      - next_checkin_at
+      - state
+      - updated_at
+      - user
+    AdminInactivityUser:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        full_name:
+          type: string
+        email:
+          type: string
+          format: email
+        status:
+          type: string
+      required:
+      - email
+      - full_name
+      - id
+      - status
     AdminLegalDocument:
       type: object
       properties:
@@ -6955,6 +7398,112 @@ components:
       - title
       - trigger_type
       - type
+    AdminPlan:
+      type: object
+      description: |-
+        A plan, read and written. `users_count` is annotated by the view (live users
+        on the plan). `code` must be a model choice and unique; `features` an object.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        code:
+          $ref: '#/components/schemas/CodeEnum'
+        name:
+          type: string
+          maxLength: 100
+        price:
+          type: number
+          format: double
+          maximum: 100000000
+          minimum: 0
+          exclusiveMaximum: true
+        currency:
+          type: string
+          maxLength: 3
+        billing_period:
+          type: string
+          maxLength: 20
+        max_messages:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        storage_years:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        max_media_mb:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        features: {}
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        users_count:
+          type: integer
+          readOnly: true
+      required:
+      - code
+      - created_at
+      - id
+      - max_media_mb
+      - max_messages
+      - name
+      - price
+      - storage_years
+      - users_count
+    AdminPlanRequest:
+      type: object
+      description: |-
+        A plan, read and written. `users_count` is annotated by the view (live users
+        on the plan). `code` must be a model choice and unique; `features` an object.
+      properties:
+        code:
+          $ref: '#/components/schemas/CodeEnum'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        price:
+          type: number
+          format: double
+          maximum: 100000000
+          minimum: 0
+          exclusiveMaximum: true
+        currency:
+          type: string
+          minLength: 1
+          maxLength: 3
+        billing_period:
+          type: string
+          maxLength: 20
+        max_messages:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        storage_years:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        max_media_mb:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        features: {}
+        is_active:
+          type: boolean
+      required:
+      - code
+      - max_media_mb
+      - max_messages
+      - name
+      - price
+      - storage_years
     AdminSender:
       type: object
       properties:
@@ -7059,6 +7608,80 @@ components:
           type: string
           format: uuid
           nullable: true
+    AdminTrusteeMask:
+      type: object
+      properties:
+        name_initial:
+          type: string
+          description: First letter of the name and ".", or "?" without one.
+        relation:
+          type: string
+      required:
+      - name_initial
+      - relation
+    AdminTrusteeRequest:
+      type: object
+      description: A trustee request. Never the token hash, IP, note, nor the trustee's
+        name, e-mail or phone.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        user:
+          allOf:
+          - $ref: '#/components/schemas/AdminTrusteeUser'
+          readOnly: true
+        trustee:
+          allOf:
+          - $ref: '#/components/schemas/AdminTrusteeMask'
+          nullable: true
+          readOnly: true
+        requested_at:
+          type: string
+          format: date-time
+          readOnly: true
+        decision:
+          allOf:
+          - $ref: '#/components/schemas/TrusteeStatusEnum'
+          readOnly: true
+        decided_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        email_sent_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        email_attempts:
+          type: integer
+          readOnly: true
+      required:
+      - decided_at
+      - decision
+      - email_attempts
+      - email_sent_at
+      - id
+      - requested_at
+      - trustee
+      - user
+    AdminTrusteeUser:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        full_name:
+          type: string
+        email:
+          type: string
+          format: email
+      required:
+      - email
+      - full_name
+      - id
     AdminUser:
       type: object
       description: |-
@@ -7272,6 +7895,9 @@ components:
       - PASSWORD_RESET
       - SYSTEM_LOGS_PURGED
       - DELIVERY_RETRIED
+      - PLAN_CREATED
+      - PLAN_UPDATED
+      - PLAN_DELETED
       type: string
       description: |-
         * `USER_CREATED` - User Created
@@ -7291,6 +7917,9 @@ components:
         * `PASSWORD_RESET` - Password Reset
         * `SYSTEM_LOGS_PURGED` - System Logs Purged
         * `DELIVERY_RETRIED` - Delivery Retried
+        * `PLAN_CREATED` - Plan Created
+        * `PLAN_UPDATED` - Plan Updated
+        * `PLAN_DELETED` - Plan Deleted
     AuthTokens:
       type: object
       properties:
@@ -8396,6 +9025,34 @@ components:
             items:
               $ref: '#/components/schemas/AdminDeliveryRow'
       description: A bare array by default; the paged object when `page_size` is sent.
+    PaginatedAdminInactivityList:
+      oneOf:
+      - type: array
+        items:
+          $ref: '#/components/schemas/AdminInactivity'
+      - type: object
+        required:
+        - count
+        - results
+        properties:
+          count:
+            type: integer
+            example: 123
+          next:
+            type: string
+            nullable: true
+            format: uri
+            example: http://api.example.org/accounts/?page=4
+          previous:
+            type: string
+            nullable: true
+            format: uri
+            example: http://api.example.org/accounts/?page=2
+          results:
+            type: array
+            items:
+              $ref: '#/components/schemas/AdminInactivity'
+      description: A bare array by default; the paged object when `page_size` is sent.
     PaginatedAdminMessageList:
       oneOf:
       - type: array
@@ -8423,6 +9080,62 @@ components:
             type: array
             items:
               $ref: '#/components/schemas/AdminMessage'
+      description: A bare array by default; the paged object when `page_size` is sent.
+    PaginatedAdminPlanList:
+      oneOf:
+      - type: array
+        items:
+          $ref: '#/components/schemas/AdminPlan'
+      - type: object
+        required:
+        - count
+        - results
+        properties:
+          count:
+            type: integer
+            example: 123
+          next:
+            type: string
+            nullable: true
+            format: uri
+            example: http://api.example.org/accounts/?page=4
+          previous:
+            type: string
+            nullable: true
+            format: uri
+            example: http://api.example.org/accounts/?page=2
+          results:
+            type: array
+            items:
+              $ref: '#/components/schemas/AdminPlan'
+      description: A bare array by default; the paged object when `page_size` is sent.
+    PaginatedAdminTrusteeRequestList:
+      oneOf:
+      - type: array
+        items:
+          $ref: '#/components/schemas/AdminTrusteeRequest'
+      - type: object
+        required:
+        - count
+        - results
+        properties:
+          count:
+            type: integer
+            example: 123
+          next:
+            type: string
+            nullable: true
+            format: uri
+            example: http://api.example.org/accounts/?page=4
+          previous:
+            type: string
+            nullable: true
+            format: uri
+            example: http://api.example.org/accounts/?page=2
+          results:
+            type: array
+            items:
+              $ref: '#/components/schemas/AdminTrusteeRequest'
       description: A bare array by default; the paged object when `page_size` is sent.
     PaginatedAdminUserList:
       oneOf:
@@ -8782,6 +9495,46 @@ components:
           format: date
           nullable: true
         is_published:
+          type: boolean
+    PatchedAdminPlanRequest:
+      type: object
+      description: |-
+        A plan, read and written. `users_count` is annotated by the view (live users
+        on the plan). `code` must be a model choice and unique; `features` an object.
+      properties:
+        code:
+          $ref: '#/components/schemas/CodeEnum'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        price:
+          type: number
+          format: double
+          maximum: 100000000
+          minimum: 0
+          exclusiveMaximum: true
+        currency:
+          type: string
+          minLength: 1
+          maxLength: 3
+        billing_period:
+          type: string
+          maxLength: 20
+        max_messages:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        storage_years:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        max_media_mb:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        features: {}
+        is_active:
           type: boolean
     PatchedAdminSupportCategoryRequest:
       type: object
