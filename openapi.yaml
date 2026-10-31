@@ -925,9 +925,10 @@ paths:
         GET/PATCH/DELETE /api/v1/admin/control/plans/<id>
 
         PATCH is partial (`plans.update`, PLAN_UPDATED with only the changed
-        fields). Setting `is_active` false on a plan in use is fine: users keep
-        it, it just stops being offered. DELETE (`plans.delete`, PLAN_DELETED) is
-        400 `plan_in_use` while any live user is on the plan.
+        fields); `code` can't change (400 `validation_error`). Setting
+        `is_active` false on a plan in use is fine: users keep it, it just stops
+        being offered. DELETE (`plans.delete`, PLAN_DELETED) is 400 `plan_in_use`
+        while any live user is on the plan.
       summary: Plan detail
       parameters:
       - in: path
@@ -974,9 +975,10 @@ paths:
         GET/PATCH/DELETE /api/v1/admin/control/plans/<id>
 
         PATCH is partial (`plans.update`, PLAN_UPDATED with only the changed
-        fields). Setting `is_active` false on a plan in use is fine: users keep
-        it, it just stops being offered. DELETE (`plans.delete`, PLAN_DELETED) is
-        400 `plan_in_use` while any live user is on the plan.
+        fields); `code` can't change (400 `validation_error`). Setting
+        `is_active` false on a plan in use is fine: users keep it, it just stops
+        being offered. DELETE (`plans.delete`, PLAN_DELETED) is 400 `plan_in_use`
+        while any live user is on the plan.
       summary: Update a plan
       parameters:
       - in: path
@@ -1028,9 +1030,10 @@ paths:
         GET/PATCH/DELETE /api/v1/admin/control/plans/<id>
 
         PATCH is partial (`plans.update`, PLAN_UPDATED with only the changed
-        fields). Setting `is_active` false on a plan in use is fine: users keep
-        it, it just stops being offered. DELETE (`plans.delete`, PLAN_DELETED) is
-        400 `plan_in_use` while any live user is on the plan.
+        fields); `code` can't change (400 `validation_error`). Setting
+        `is_active` false on a plan in use is fine: users keep it, it just stops
+        being offered. DELETE (`plans.delete`, PLAN_DELETED) is 400 `plan_in_use`
+        while any live user is on the plan.
       summary: Delete an unused plan
       parameters:
       - in: path
@@ -7404,7 +7407,8 @@ components:
       type: object
       description: |-
         A plan, read and written. `users_count` is annotated by the view (live users
-        on the plan). `code` must be a model choice and unique; `features` an object.
+        on the plan). `code` must be a model choice and unique, and is fixed once
+        the plan exists; `features` an object.
       properties:
         id:
           type: string
@@ -7463,7 +7467,8 @@ components:
       type: object
       description: |-
         A plan, read and written. `users_count` is annotated by the view (live users
-        on the plan). `code` must be a model choice and unique; `features` an object.
+        on the plan). `code` must be a model choice and unique, and is fixed once
+        the plan exists; `features` an object.
       properties:
         code:
           $ref: '#/components/schemas/CodeEnum'
@@ -9502,7 +9507,8 @@ components:
       type: object
       description: |-
         A plan, read and written. `users_count` is annotated by the view (live users
-        on the plan). `code` must be a model choice and unique; `features` an object.
+        on the plan). `code` must be a model choice and unique, and is fixed once
+        the plan exists; `features` an object.
       properties:
         code:
           $ref: '#/components/schemas/CodeEnum'
