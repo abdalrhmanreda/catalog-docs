@@ -1701,7 +1701,8 @@ paths:
   /api/v1/admin/control/users/{id}/plan:
     patch:
       operationId: admin_control_users_plan_partial_update
-      description: 'PATCH {"plan": "<code>"}: the plan must exist and be active.'
+      description: 'PATCH {"plan": "<code>"}: the plan must exist and be active; deleted
+        accounts are refused.'
       summary: Change a user's plan
       parameters:
       - in: path
@@ -1903,7 +1904,7 @@ paths:
       description: |-
         Sets status to suspended and revokes refresh tokens; the auth class refuses
         the access token on the next call. Idempotent. Never overwrites a deceased
-        status.
+        status. Superusers can't be suspended, nor the last usable Super Admin.
       summary: Suspend a user
       parameters:
       - in: path
@@ -2045,8 +2046,9 @@ paths:
   /api/v1/admin/control/users/{id}/verify-email:
     post:
       operationId: admin_control_users_verify_email_create
-      description: Stamps email_verified_at if empty and relinks contacts; no-op when
-        verified already.
+      description: |-
+        Stamps email_verified_at if empty and relinks contacts; no-op when verified
+        already. Deleted accounts are refused.
       summary: Mark a user's e-mail verified
       parameters:
       - in: path
