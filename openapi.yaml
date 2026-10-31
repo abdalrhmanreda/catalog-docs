@@ -150,10 +150,13 @@ paths:
       description: |-
         POST /api/v1/admin/control/deliveries/<id>/retry
 
-        Sends a `failed` or `queued` e-mail delivery of a live message again, now,
-        through the resend path process_due uses: a fresh link token (never
-        returned), attempts + 1, and the delivery ends `sent` or `failed`. A send
-        that fails is a 200 with status `failed` and the new `last_error`.
+        Sends a `failed` or `queued` e-mail delivery of a live message again, now.
+        In one transaction the delivery gets a fresh link token (never returned)
+        and goes back to `queued`, and the audit entry is written; the e-mail goes
+        out once that commits, through the same after-commit path a release uses
+        (attempts + 1, then `sent` or `failed`). The response is the delivery
+        after that send: a send that fails is a 200 with status `failed` and the
+        new `last_error`.
 
         This is an explicit human override, so it is not bound by the automatic
         five-attempt cap (MAX_EMAIL_ATTEMPTS): it may run past it, and still
