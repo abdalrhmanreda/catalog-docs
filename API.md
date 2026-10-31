@@ -27,9 +27,9 @@ Contents:
 | Trailing slash | Optional: `/me` and `/me/` are the same endpoint. |
 | Ids | UUID strings, except notification ids, which are integers sent as strings (`"12"`). |
 | Dates | ISO-8601 in UTC, for example `2026-10-31T09:00:00Z` or `2026-10-31T09:00:00.123456Z`. Send dates the same way. |
-| Swagger UI | `/api/v1/docs` |
+| Swagger UI | `/api/v1/docs` (live server) and [`docs/swagger.html`](swagger.html) (standalone interactive viewer) |
 | ReDoc | `/api/v1/redoc` |
-| OpenAPI file | `/api/v1/schema` (live) and `docs/openapi.yaml` in the repository (the same schema, kept in step by a test) |
+| OpenAPI file | `/api/v1/schema` (live), [`docs/openapi.yaml`](openapi.yaml) and [`docs/openapi.json`](openapi.json) in the repository (the same schema, kept in step by a test) |
 
 Empty optional strings come back as `""`, not `null` (`phone`, `avatar_url`,
 `relation`, `occasion_note`). Nullable fields come back as `null` and are
