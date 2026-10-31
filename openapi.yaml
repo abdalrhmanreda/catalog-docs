@@ -858,11 +858,59 @@ paths:
                 $ref: '#/components/schemas/ErrorEnvelope'
   /api/v1/admin/control/users:
     get:
-      operationId: admin_control_users_retrieve
+      operationId: admin_control_users_list
       description: |-
-        Account roster for the admin console: who they are and what they can do.
-        Read-only.
+        Account roster for the admin console, paginated (`{count, next, previous,
+        results}`). Read-only.
       summary: List users
+      parameters:
+      - in: query
+        name: deleted
+        schema:
+          type: string
+        description: 'true: only deleted; all: both; default: not deleted.'
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Opt-in paging. Without it the endpoint returns a bare array of
+          every item. With it, `data` is `{count, next, previous, results}`. Capped
+          at 200.
+        schema:
+          type: integer
+      - in: query
+        name: plan
+        schema:
+          type: string
+        description: Plan code.
+      - in: query
+        name: role
+        schema:
+          type: string
+        description: Role slug.
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Matches e-mail, name or phone.
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - active
+          - deceased_confirmed
+          - suspended
+      - in: query
+        name: verified
+        schema:
+          type: boolean
+        description: E-mail verified or not.
       tags:
       - Admin
       security:
@@ -878,8 +926,52 @@ paths:
                     type: integer
                     example: 200
                   data:
-                    type: object
-                    additionalProperties: {}
+                    $ref: '#/components/schemas/PaginatedAdminUserList'
+                  error:
+                    nullable: true
+                    description: Always null on success.
+                    example: null
+                required:
+                - status_code
+                - data
+                - error
+          description: ''
+        '401':
+          description: 'Missing, invalid or expired access token, or the account can
+            no longer sign in. error.code: `unauthorized`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/admin/control/users/{id}:
+    get:
+      operationId: admin_control_users_retrieve
+      description: 'GET /api/v1/admin/control/users/<id>: the user plus counters and
+        inactivity switch.'
+      summary: User detail
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Admin
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status_code:
+                    type: integer
+                    example: 200
+                  data:
+                    $ref: '#/components/schemas/AdminUserDetail'
                   error:
                     nullable: true
                     description: Always null on success.
@@ -938,6 +1030,55 @@ paths:
                   data:
                     type: object
                     additionalProperties: {}
+                  error:
+                    nullable: true
+                    description: Always null on success.
+                    example: null
+                required:
+                - status_code
+                - data
+                - error
+          description: ''
+        '401':
+          description: 'Missing, invalid or expired access token, or the account can
+            no longer sign in. error.code: `unauthorized`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/admin/control/users/{id}/plan:
+    patch:
+      operationId: admin_control_users_plan_partial_update
+      description: 'PATCH {"plan": "<code>"}: the plan must exist and be active.'
+      summary: Change a user's plan
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Admin
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPlanChangeRequest'
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status_code:
+                    type: integer
+                    example: 200
+                  data:
+                    $ref: '#/components/schemas/AdminUser'
                   error:
                     nullable: true
                     description: Always null on success.
@@ -1104,6 +1245,98 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/admin/control/users/{id}/suspend:
+    post:
+      operationId: admin_control_users_suspend_create
+      description: |-
+        Sets status to suspended and revokes refresh tokens; the auth class refuses
+        the access token on the next call. Idempotent. Never overwrites a deceased
+        status.
+      summary: Suspend a user
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Admin
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status_code:
+                    type: integer
+                    example: 200
+                  data:
+                    $ref: '#/components/schemas/AdminUser'
+                  error:
+                    nullable: true
+                    description: Always null on success.
+                    example: null
+                required:
+                - status_code
+                - data
+                - error
+          description: ''
+        '401':
+          description: 'Missing, invalid or expired access token, or the account can
+            no longer sign in. error.code: `unauthorized`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/admin/control/users/{id}/unsuspend:
+    post:
+      operationId: admin_control_users_unsuspend_create
+      description: Back to active. Idempotent; a deceased status is never changed
+        from the dashboard.
+      summary: Unsuspend a user
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Admin
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status_code:
+                    type: integer
+                    example: 200
+                  data:
+                    $ref: '#/components/schemas/AdminUser'
+                  error:
+                    nullable: true
+                    description: Always null on success.
+                    example: null
+                required:
+                - status_code
+                - data
+                - error
+          description: ''
+        '401':
+          description: 'Missing, invalid or expired access token, or the account can
+            no longer sign in. error.code: `unauthorized`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
   /api/v1/admin/control/users/{id}/update:
     patch:
       operationId: admin_control_users_update_partial_update
@@ -1141,6 +1374,51 @@ paths:
                   data:
                     type: object
                     additionalProperties: {}
+                  error:
+                    nullable: true
+                    description: Always null on success.
+                    example: null
+                required:
+                - status_code
+                - data
+                - error
+          description: ''
+        '401':
+          description: 'Missing, invalid or expired access token, or the account can
+            no longer sign in. error.code: `unauthorized`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/admin/control/users/{id}/verify-email:
+    post:
+      operationId: admin_control_users_verify_email_create
+      description: Stamps email_verified_at if empty and relinks contacts; no-op when
+        verified already.
+      summary: Mark a user's e-mail verified
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - Admin
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status_code:
+                    type: integer
+                    example: 200
+                  data:
+                    $ref: '#/components/schemas/AdminUser'
                   error:
                     nullable: true
                     description: Always null on success.
@@ -6197,6 +6475,159 @@ components:
           type: string
           format: uuid
           nullable: true
+    AdminUser:
+      type: object
+      description: |-
+        What the admin console shows for an account. Deliberately a short allow-list:
+        no password hash, PIN hash or tokens. Expects `rbac_roles` and `current_plan`
+        to be prefetched/selected by the view.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        full_name:
+          type: string
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+        phone:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/UserStatusEnum'
+          readOnly: true
+        is_active:
+          type: boolean
+          readOnly: true
+          title: Active
+          description: Designates whether this user should be treated as active. Unselect
+            this instead of deleting accounts.
+        email_verified_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        plan_code:
+          type: string
+          nullable: true
+          readOnly: true
+        last_active_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        deleted_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        roles:
+          type: array
+          items:
+            type: string
+          readOnly: true
+      required:
+      - created_at
+      - deleted_at
+      - email
+      - email_verified_at
+      - full_name
+      - id
+      - is_active
+      - last_active_at
+      - phone
+      - plan_code
+      - roles
+      - status
+    AdminUserDetail:
+      type: object
+      description: |-
+        What the admin console shows for an account. Deliberately a short allow-list:
+        no password hash, PIN hash or tokens. Expects `rbac_roles` and `current_plan`
+        to be prefetched/selected by the view.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        full_name:
+          type: string
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+        phone:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/UserStatusEnum'
+          readOnly: true
+        is_active:
+          type: boolean
+          readOnly: true
+          title: Active
+          description: Designates whether this user should be treated as active. Unselect
+            this instead of deleting accounts.
+        email_verified_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        plan_code:
+          type: string
+          nullable: true
+          readOnly: true
+        last_active_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        deleted_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        roles:
+          type: array
+          items:
+            type: string
+          readOnly: true
+        counts:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        inactivity:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          readOnly: true
+      required:
+      - counts
+      - created_at
+      - deleted_at
+      - email
+      - email_verified_at
+      - full_name
+      - id
+      - inactivity
+      - is_active
+      - last_active_at
+      - phone
+      - plan_code
+      - roles
+      - status
     AuditLog:
       type: object
       properties:
@@ -6246,6 +6677,8 @@ components:
       - USER_RESTORED
       - USER_ACTIVATED
       - USER_DEACTIVATED
+      - USER_SUSPENDED
+      - USER_UNSUSPENDED
       - ROLE_CREATED
       - ROLE_UPDATED
       - ROLE_DELETED
@@ -6262,6 +6695,8 @@ components:
         * `USER_RESTORED` - User Restored
         * `USER_ACTIVATED` - User Activated
         * `USER_DEACTIVATED` - User Deactivated
+        * `USER_SUSPENDED` - User Suspended
+        * `USER_UNSUSPENDED` - User Unsuspended
         * `ROLE_CREATED` - Role Created
         * `ROLE_UPDATED` - Role Updated
         * `ROLE_DELETED` - Role Deleted
@@ -7333,6 +7768,34 @@ components:
       - code
       - purpose
       - target
+    PaginatedAdminUserList:
+      oneOf:
+      - type: array
+        items:
+          $ref: '#/components/schemas/AdminUser'
+      - type: object
+        required:
+        - count
+        - results
+        properties:
+          count:
+            type: integer
+            example: 123
+          next:
+            type: string
+            nullable: true
+            format: uri
+            example: http://api.example.org/accounts/?page=4
+          previous:
+            type: string
+            nullable: true
+            format: uri
+            example: http://api.example.org/accounts/?page=2
+          results:
+            type: array
+            items:
+              $ref: '#/components/schemas/AdminUser'
+      description: A bare array by default; the paged object when `page_size` is sent.
     PaginatedAuditLogList:
       oneOf:
       - type: array
@@ -7760,6 +8223,13 @@ components:
       properties:
         read:
           type: boolean
+    PatchedPlanChangeRequest:
+      type: object
+      properties:
+        plan:
+          type: string
+          minLength: 1
+          description: Code of an active plan.
     PatchedProfileRequest:
       type: object
       description: 'PATCH /me: only these four fields are writable.'
