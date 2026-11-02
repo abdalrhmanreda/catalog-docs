@@ -25,6 +25,7 @@ Contents:
 | Local | `http://localhost:8000/api/v1` |
 | Format | JSON in, JSON out (`Content-Type: application/json`). The only exceptions are the media upload (raw bytes) and download (the file). |
 | Trailing slash | Optional: `/me` and `/me/` are the same endpoint. |
+| `X-Platform` header | Required on every request: `ios`, `android` or `web`. Not needed on `/health`, `/schema`, `/docs`, `/redoc` or the signed `/media/{id}/file` URL. A missing or unknown value gets `400 invalid_platform`. |
 | Ids | UUID strings, except notification ids, which are integers sent as strings (`"12"`). |
 | Dates | ISO-8601 in UTC, for example `2026-10-31T09:00:00Z` or `2026-10-31T09:00:00.123456Z`. Send dates the same way. |
 | Swagger UI | `/api/v1/docs` (live server) and [`docs/swagger.html`](swagger.html) (standalone interactive viewer) |
@@ -148,6 +149,7 @@ Accounts that are suspended or deleted cannot sign in: login answers
 | `error.code` | HTTP | Where | Meaning | What the app should do |
 |---|---|---|---|---|
 | `validation_error` | 400 | Any endpoint with a body or query rules | A field is missing or invalid. `details` lists the fields. | Show the field messages next to the fields. |
+| `invalid_platform` | 400 | Every endpoint except those listed in section 1 | The `X-Platform` header is missing or is not `ios`, `android` or `web`. | Send the header (a client bug). |
 | `parse_error` | 400 | Any endpoint with a body | The body is not valid JSON. | Fix the request (a client bug). |
 | `invalid_credentials` | 400 | `POST /auth/login` | Unknown email, wrong password, or an account that may not sign in. | Show "email or password is wrong". |
 | `invalid_token` | 400 | `POST /auth/logout` | The refresh token is not a live refresh token of this user. | Clear local tokens anyway. |
@@ -1093,6 +1095,34 @@ Outside the RAML, the support app also serves `/legal` and `/legal/{slug}`
 `GET /health` (no auth): `{"status": "ok", "database": "ok"}`, or `503` with
 code `error` when the database is down.
 
+`GET /force-update?force_update_code=5` (no auth) says whether this build must
+update. `force_update_code` is the integer build code from the app's pubspec
+YAML, 1 or higher. Otherwise the response is `400 validation_error`. The server
+compares the code with the minimum code for the `X-Platform` platform, set in
+the Django admin.
+
+A code below the minimum:
+
+```json
+{
+  "force_update": true,
+  "title": "Update required",
+  "body": "Please update to continue.",
+  "link": "https://apps.apple.com/app/id1"
+}
+```
+
+A code at or above the minimum, or a platform with no active minimum:
+
+```json
+{
+  "force_update": false,
+  "title": null,
+  "body": null,
+  "link": null
+}
+```
+
 Endpoints under `/admin/...`, `/support/admin/...` and
 `/notifications/admin/send` belong to the admin console and need RBAC
 permissions. They are listed in Swagger under the Admin tag.
@@ -1276,8 +1306,9 @@ The code is what this guide and Swagger describe. Where it differs from
 `RAML/RAML.yaml`:
 
 1. **Extra endpoints.** `PUT /media/{id}/upload` (raw bytes, the
-   `upload_url`) and `GET /media/{id}/file?sig=` (the signed media `url`)
-   exist only in the code. The app uses the URLs it is given.
+   `upload_url`), `GET /media/{id}/file?sig=` (the signed media `url`) and
+   `GET /force-update` exist only in the code. The app uses the URLs it is
+   given. The required `X-Platform` header is also not in the RAML.
 2. **`/auth/refresh` errors.** An expired, malformed or revoked refresh
    token is `401 unauthorized`, not 400. A missing `refresh` field is
    `400 validation_error`.
