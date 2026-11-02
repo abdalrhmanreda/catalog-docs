@@ -6,6 +6,94 @@
         "description": "The backend of the Catalog Android app: accounts, contacts, messages released later (on a date, an occasion or after inactivity), the recipient link, the inactivity switch and its trusted contact.\n\nEvery JSON response is wrapped in one envelope: `{\"status_code\": int, \"data\": <payload or null>, \"error\": null or {\"message\", \"code\", \"details\"?}}`. The schemas below show it. Authenticated endpoints take `Authorization: Bearer <access>`.\n\nThe written guide, with error codes, rate limits and flows, is `docs/API.md` in the backend repository."
     },
     "paths": {
+        "/api/v1/force-update": {
+            "get": {
+                "operationId": "force_update_retrieve",
+                "description": "Public. Compares `force_update_code` with the minimum code for the `X-Platform` platform. A build below the minimum gets `force_update: true` plus that platform's title, body and store link. Otherwise `force_update` is false and the other fields are null.",
+                "summary": "Check whether this app build must update",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "force_update_code",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "description": "The integer build code from the app's pubspec YAML.",
+                        "required": true
+                    },
+                    {
+                        "in": "header",
+                        "name": "X-Platform",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "ios",
+                                "android",
+                                "web"
+                            ]
+                        },
+                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
+                    }
+                ],
+                "tags": [
+                    "Force Update"
+                ],
+                "security": [],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status_code": {
+                                            "type": "integer",
+                                            "example": 200
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/ForceUpdate"
+                                        },
+                                        "error": {
+                                            "nullable": true,
+                                            "description": "Always null on success.",
+                                            "example": null
+                                        }
+                                    },
+                                    "required": [
+                                        "status_code",
+                                        "data",
+                                        "error"
+                                    ]
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "400": {
+                        "description": "error.code: `validation_error`, `invalid_platform`.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit hit; see the Retry-After header. error.code: `throttled`.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorEnvelope"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/admin/control/audit-logs": {
             "get": {
                 "operationId": "admin_control_audit_logs_list",
@@ -5808,94 +5896,6 @@
                         "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ]
-            }
-        },
-        "/api/v1/force-update": {
-            "get": {
-                "operationId": "force_update_retrieve",
-                "description": "Public. Compares `force_update_code` with the minimum code for the `X-Platform` platform. A build below the minimum gets `force_update: true` plus that platform's title, body and store link. Otherwise `force_update` is false and the other fields are null.",
-                "summary": "Check whether this app build must update",
-                "parameters": [
-                    {
-                        "in": "query",
-                        "name": "force_update_code",
-                        "schema": {
-                            "type": "integer",
-                            "minimum": 1
-                        },
-                        "description": "The integer build code from the app's pubspec YAML.",
-                        "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ],
-                "tags": [
-                    "System"
-                ],
-                "security": [],
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "status_code": {
-                                            "type": "integer",
-                                            "example": 200
-                                        },
-                                        "data": {
-                                            "$ref": "#/components/schemas/ForceUpdate"
-                                        },
-                                        "error": {
-                                            "nullable": true,
-                                            "description": "Always null on success.",
-                                            "example": null
-                                        }
-                                    },
-                                    "required": [
-                                        "status_code",
-                                        "data",
-                                        "error"
-                                    ]
-                                }
-                            }
-                        },
-                        "description": ""
-                    },
-                    "400": {
-                        "description": "error.code: `validation_error`, `invalid_platform`.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorEnvelope"
-                                }
-                            }
-                        }
-                    },
-                    "429": {
-                        "description": "Rate limit hit; see the Retry-After header. error.code: `throttled`.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorEnvelope"
-                                }
-                            }
-                        }
-                    }
-                }
             }
         },
         "/api/v1/health": {
@@ -17225,6 +17225,10 @@
         }
     },
     "tags": [
+        {
+            "name": "Force Update",
+            "description": "App version and mandatory update check."
+        },
         {
             "name": "Auth",
             "description": "Sign up, sign in, tokens, emailed codes and password reset."
