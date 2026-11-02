@@ -1,9 +1,9 @@
 openapi: 3.0.3
 info:
-  title: Katalog API
+  title: Catalog API
   version: v1
   description: |-
-    The backend of the Katalog Android app: accounts, contacts, messages released later (on a date, an occasion or after inactivity), the recipient link, the inactivity switch and its trusted contact.
+    The backend of the Catalog Android app: accounts, contacts, messages released later (on a date, an occasion or after inactivity), the recipient link, the inactivity switch and its trusted contact.
 
     Every JSON response is wrapped in one envelope: `{"status_code": int, "data": <payload or null>, "error": null or {"message", "code", "details"?}}`. The schemas below show it. Authenticated endpoints take `Authorization: Bearer <access>`.
 

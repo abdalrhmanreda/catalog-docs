@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Katalog API - Swagger Documentation</title>
+  <title>Catalog API - Swagger Documentation</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -31,7 +31,7 @@
     }
 
     /* Top Navigation Header */
-    .katalog-header {
+    .catalog-header {
       background: var(--primary);
       color: #FFFFFF;
       padding: 12px 24px;
@@ -46,13 +46,13 @@
       z-index: 1000;
     }
 
-    .katalog-brand {
+    .catalog-brand {
       display: flex;
       align-items: center;
       gap: 12px;
     }
 
-    .katalog-logo-badge {
+    .catalog-logo-badge {
       background: var(--accent);
       color: #FFFFFF;
       font-weight: 700;
@@ -62,28 +62,28 @@
       letter-spacing: 0.5px;
     }
 
-    .katalog-title {
+    .catalog-title {
       font-size: 18px;
       font-weight: 700;
       letter-spacing: 0.2px;
       margin: 0;
     }
 
-    .katalog-subtitle {
+    .catalog-subtitle {
       font-size: 12px;
       opacity: 0.75;
       margin-left: 8px;
       font-weight: 400;
     }
 
-    .katalog-nav-links {
+    .catalog-nav-links {
       display: flex;
       align-items: center;
       gap: 10px;
       flex-wrap: wrap;
     }
 
-    .katalog-btn {
+    .catalog-btn {
       display: inline-flex;
       align-items: center;
       gap: 6px;
@@ -100,18 +100,18 @@
       font-family: var(--font-brand);
     }
 
-    .katalog-btn:hover {
+    .catalog-btn:hover {
       background: rgba(255,255,255,0.18);
       border-color: rgba(255,255,255,0.4);
     }
 
-    .katalog-btn.accent {
+    .catalog-btn.accent {
       background: var(--accent);
       border-color: var(--accent);
       color: #FFFFFF;
     }
 
-    .katalog-btn.accent:hover {
+    .catalog-btn.accent:hover {
       background: #b86a53;
       border-color: #b86a53;
     }
@@ -180,22 +180,22 @@
   </style>
 </head>
 <body>
-  <header class="katalog-header">
-    <div class="katalog-brand">
-      <span class="katalog-logo-badge">KATALOG</span>
-      <h1 class="katalog-title">API Documentation <span class="katalog-subtitle">v1 • Swagger UI</span></h1>
+  <header class="catalog-header">
+    <div class="catalog-brand">
+      <span class="catalog-logo-badge">CATALOG</span>
+      <h1 class="catalog-title">Catalog API Documentation <span class="catalog-subtitle">v1 • Swagger UI</span></h1>
     </div>
-    <nav class="katalog-nav-links">
-      <a class="katalog-btn" href="openapi.yaml" download="openapi.yaml" title="Download raw OpenAPI YAML spec">
+    <nav class="catalog-nav-links">
+      <a class="catalog-btn" href="openapi.yaml" download="openapi.yaml" title="Download raw OpenAPI YAML spec">
         <span>📄</span> openapi.yaml
       </a>
-      <a class="katalog-btn" href="openapi.json" download="openapi.json" title="Download raw OpenAPI JSON spec">
+      <a class="catalog-btn" href="openapi.json" download="openapi.json" title="Download raw OpenAPI JSON spec">
         <span>📦</span> openapi.json
       </a>
-      <a class="katalog-btn" href="ERD_VISUALIZER.html" target="_blank" title="View Database Visualizer">
+      <a class="catalog-btn" href="ERD_VISUALIZER.html" target="_blank" title="View Database Visualizer">
         <span>📊</span> ERD Visualizer
       </a>
-      <a class="katalog-btn accent" href="API.md" target="_blank" title="Read Developer Guide">
+      <a class="catalog-btn accent" href="API.md" target="_blank" title="Read Developer Guide">
         <span>📖</span> API Guide (MD)
       </a>
     </nav>
@@ -209,9 +209,9 @@
     const EMBEDDED_SPEC = {
     "openapi": "3.0.3",
     "info": {
-        "title": "Katalog API",
+        "title": "Catalog API",
         "version": "v1",
-        "description": "The backend of the Katalog Android app: accounts, contacts, messages released later (on a date, an occasion or after inactivity), the recipient link, the inactivity switch and its trusted contact.\n\nEvery JSON response is wrapped in one envelope: `{\"status_code\": int, \"data\": <payload or null>, \"error\": null or {\"message\", \"code\", \"details\"?}}`. The schemas below show it. Authenticated endpoints take `Authorization: Bearer <access>`.\n\nThe written guide, with error codes, rate limits and flows, is `docs/API.md` in the backend repository."
+        "description": "The backend of the Catalog Android app: accounts, contacts, messages released later (on a date, an occasion or after inactivity), the recipient link, the inactivity switch and its trusted contact.\n\nEvery JSON response is wrapped in one envelope: `{\"status_code\": int, \"data\": <payload or null>, \"error\": null or {\"message\", \"code\", \"details\"?}}`. The schemas below show it. Authenticated endpoints take `Authorization: Bearer <access>`.\n\nThe written guide, with error codes, rate limits and flows, is `docs/API.md` in the backend repository."
     },
     "paths": {
         "/api/v1/admin/control/audit-logs": {

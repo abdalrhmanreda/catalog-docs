@@ -1,6 +1,6 @@
-# Katalog Backend - Entity Relationship Diagram (ERD) & Relations
+# Catalog Backend - Entity Relationship Diagram (ERD) & Relations
 
-This document defines the relational database schema, entities, and relationship cardinality for the **Katalog** backend in Django, adapted to exclude SMS gateways, external payment gateways, and background job queues.
+This document defines the relational database schema, entities, and relationship cardinality for the **Catalog** backend in Django, adapted to exclude SMS gateways, external payment gateways, and background job queues.
 
 ---
 

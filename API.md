@@ -1,4 +1,4 @@
-# Katalog API guide
+# Catalog API guide
 
 For the Android developers who call this API. It describes what the backend
 does today. The contract it was built from is `RAML/RAML.yaml`; where the
@@ -21,7 +21,7 @@ Contents:
 
 | | |
 |---|---|
-| Base URL | `https://api.katalog.app/api/v1` |
+| Base URL | `https://api.catalog.app/api/v1` |
 | Local | `http://localhost:8000/api/v1` |
 | Format | JSON in, JSON out (`Content-Type: application/json`). The only exceptions are the media upload (raw bytes) and download (the file). |
 | Trailing slash | Optional: `/me` and `/me/` are the same endpoint. |
@@ -83,7 +83,7 @@ Lists (`GET /contacts`, `/messages`, `/inbox`, `/notifications`, `/plans`,
   "status_code": 200,
   "data": {
     "count": 4,
-    "next": "https://api.katalog.app/api/v1/contacts?page=2&page_size=2",
+    "next": "https://api.catalog.app/api/v1/contacts?page=2&page_size=2",
     "previous": null,
     "results": [ { "id": "47660aef-75f9-4416-8a34-6c98e244bc6d", "name": "Fatima" } ]
   },
@@ -264,7 +264,7 @@ Reusable objects:
 ```
 
 `linked_user_id` is set when the contact's email belongs to a verified
-Katalog account (in-app messages to this contact reach that account's
+Catalog account (in-app messages to this contact reach that account's
 inbox), else `null`. `last_used_at` is set when a confirmed message goes to
 the contact.
 
@@ -275,7 +275,7 @@ the contact.
   "id": "f0a5ccd9-1829-4bad-bf43-091cf564520a",
   "kind": "voice",
   "storage_key": "media/8f6d6c64-9eda-4ba6-9314-5208f305a825/f0a5ccd9-1829-4bad-bf43-091cf564520a",
-  "url": "https://api.katalog.app/api/v1/media/f0a5ccd9-1829-4bad-bf43-091cf564520a/file?sig=f0a5ccd9-...:1xMx33:SJ1P0U...",
+  "url": "https://api.catalog.app/api/v1/media/f0a5ccd9-1829-4bad-bf43-091cf564520a/file?sig=f0a5ccd9-...:1xMx33:SJ1P0U...",
   "mime_type": "audio/mp4",
   "size_bytes": 48213,
   "duration_sec": 3,
@@ -660,7 +660,7 @@ Auth: yes. Reserves the storage and returns where to send the bytes.
 ```json
 {
   "media_id": "f0a5ccd9-1829-4bad-bf43-091cf564520a",
-  "upload_url": "https://api.katalog.app/api/v1/media/f0a5ccd9-1829-4bad-bf43-091cf564520a/upload",
+  "upload_url": "https://api.catalog.app/api/v1/media/f0a5ccd9-1829-4bad-bf43-091cf564520a/upload",
   "storage_key": "media/8f6d6c64-9eda-4ba6-9314-5208f305a825/f0a5ccd9-1829-4bad-bf43-091cf564520a"
 }
 ```
@@ -1182,7 +1182,7 @@ Release creates one delivery per recipient contact (deleted contacts are
 skipped):
 
 - `in_app`: the delivery is `delivered` at once. If the contact is linked to
-  a Katalog account, it appears in that account's `GET /inbox` with a
+  a Catalog account, it appears in that account's `GET /inbox` with a
   `message_received` notification. A contact that is not linked never sees
   an in-app message.
 - `email`: an email with the link `{frontend}/r/{token}` goes to the
