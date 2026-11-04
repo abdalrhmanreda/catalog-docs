@@ -12,10 +12,11 @@ paths:
   /api/v1/force-update:
     get:
       operationId: force_update_retrieve
-      description: 'Public. Compares `force_update_code` with the minimum code for
-        the `X-Platform` platform. A build below the minimum gets `force_update: true`
-        plus that platform''s title, body and store link. Otherwise `force_update`
-        is false and the other fields are null.'
+      description: 'Public. Compares `force_update_code` with the minimum and latest
+        codes for the `X-Platform` platform. A build below the minimum gets `force_update:
+        true`. A build at or above the minimum but below the latest gets `optional_update:
+        true`. Both get that platform''s title, body and store link. Otherwise both
+        flags are false and the other fields are null.'
       summary: Check whether this app build must update
       parameters:
       - in: query
@@ -25,20 +26,10 @@ paths:
           minimum: 1
         description: The integer build code from the app's pubspec YAML.
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Force Update
-      security: []
+      security:
+      - platformHeader: []
       responses:
         '200':
           content:
@@ -97,21 +88,11 @@ paths:
           at 200.
         schema:
           type: integer
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -186,21 +167,11 @@ paths:
           - opened
           - queued
           - sent
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -256,21 +227,11 @@ paths:
           type: string
           format: uuid
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -328,21 +289,11 @@ paths:
           at 200.
         schema:
           type: integer
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -385,6 +336,7 @@ paths:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -414,18 +366,104 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/admin/control/force-update:
+    get:
+      operationId: admin_control_force_update_list
+      description: |-
+        GET /api/v1/admin/control/force-update
+
+        One entry per mobile platform. A platform nobody configured yet comes back
+        with `minimum_code` null and `is_active` false, so the console can show it.
+      summary: List the minimum app build per platform
+      tags:
+      - Admin
+      security:
+      - bearerAuth: []
+        platformHeader: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status_code:
+                    type: integer
+                    example: 200
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AdminForceUpdate'
+                  error:
+                    nullable: true
+                    description: Always null on success.
+                    example: null
+                required:
+                - status_code
+                - data
+                - error
+          description: ''
+        '401':
+          description: 'Missing, invalid or expired access token, or the account can
+            no longer sign in. error.code: `unauthorized`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/admin/control/force-update/{platform}:
+    put:
+      operationId: admin_control_force_update_update
+      description: |-
+        PUT /api/v1/admin/control/force-update/<ios|android>
+
+        Creates the platform's rule or replaces it, audited as FORCE_UPDATE_CHANGED.
+        Setting `is_active` false stops forcing updates and keeps the text.
+      summary: Set the minimum app build for a platform
       parameters:
-      - in: header
-        name: X-Platform
-        required: true
+      - in: path
+        name: platform
         schema:
           type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
+        required: true
+      tags:
+      - Admin
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminForceUpdateRequest'
+        required: true
+      security:
+      - bearerAuth: []
+        platformHeader: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status_code:
+                    type: integer
+                    example: 200
+                  data:
+                    $ref: '#/components/schemas/AdminForceUpdate'
+                  error:
+                    nullable: true
+                    description: Always null on success.
+                    example: null
+                required:
+                - status_code
+                - data
+                - error
+          description: ''
+        '401':
+          description: 'Missing, invalid or expired access token, or the account can
+            no longer sign in. error.code: `unauthorized`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
   /api/v1/admin/control/inactivity:
     get:
       operationId: admin_control_inactivity_list
@@ -464,21 +502,11 @@ paths:
           - pending_trustee
           - released
           - warning
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -540,21 +568,11 @@ paths:
           at 200.
         schema:
           type: integer
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -612,21 +630,11 @@ paths:
           at 200.
         schema:
           type: integer
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -675,6 +683,7 @@ paths:
               additionalProperties: {}
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -704,18 +713,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/admin/control/logs/stats:
     get:
       operationId: admin_control_logs_stats_retrieve
@@ -727,6 +724,7 @@ paths:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -756,18 +754,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/admin/control/me:
     get:
       operationId: admin_control_me_retrieve
@@ -782,6 +768,7 @@ paths:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -811,18 +798,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/admin/control/messages:
     get:
       operationId: admin_control_messages_list
@@ -886,21 +861,11 @@ paths:
           - inactivity
           - instant
           - occasion
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -945,21 +910,11 @@ paths:
           type: string
           format: uuid
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -997,6 +952,7 @@ paths:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -1026,18 +982,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/admin/control/plans:
     get:
       operationId: admin_control_plans_list
@@ -1062,21 +1006,11 @@ paths:
           at 200.
         schema:
           type: integer
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -1123,6 +1057,7 @@ paths:
         required: true
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '201':
           content:
@@ -1151,18 +1086,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/admin/control/plans/{id}:
     get:
       operationId: admin_control_plans_retrieve
@@ -1182,21 +1105,11 @@ paths:
           type: string
           format: uuid
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -1243,17 +1156,6 @@ paths:
           type: string
           format: uuid
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       requestBody:
@@ -1263,6 +1165,7 @@ paths:
               $ref: '#/components/schemas/PatchedAdminPlanRequest'
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -1309,21 +1212,11 @@ paths:
           type: string
           format: uuid
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '204':
           description: No response body
@@ -1345,6 +1238,7 @@ paths:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -1374,18 +1268,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
     post:
       operationId: admin_control_roles_create
       description: |-
@@ -1402,6 +1284,7 @@ paths:
               additionalProperties: {}
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -1431,18 +1314,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/admin/control/roles/{id}:
     get:
       operationId: admin_control_roles_retrieve
@@ -1457,21 +1328,11 @@ paths:
         schema:
           type: integer
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -1514,17 +1375,6 @@ paths:
         schema:
           type: integer
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       requestBody:
@@ -1535,6 +1385,7 @@ paths:
               additionalProperties: {}
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -1577,21 +1428,11 @@ paths:
         schema:
           type: integer
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '204':
           description: No response body
@@ -1615,21 +1456,11 @@ paths:
         schema:
           type: integer
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -1671,17 +1502,6 @@ paths:
         schema:
           type: integer
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       requestBody:
@@ -1692,6 +1512,7 @@ paths:
               additionalProperties: {}
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -1732,6 +1553,7 @@ paths:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -1761,18 +1583,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/admin/control/stats/overview:
     get:
       operationId: admin_control_stats_overview_retrieve
@@ -1795,6 +1605,7 @@ paths:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -1824,18 +1635,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/admin/control/stats/timeseries:
     get:
       operationId: admin_control_stats_timeseries_retrieve
@@ -1859,21 +1658,11 @@ paths:
           - deliveries
           - signups
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -1958,21 +1747,11 @@ paths:
         schema:
           type: boolean
         description: E-mail verified or not.
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -2014,21 +1793,11 @@ paths:
           type: string
           format: uuid
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -2076,17 +1845,6 @@ paths:
           type: string
           format: uuid
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       requestBody:
@@ -2097,6 +1855,7 @@ paths:
               additionalProperties: {}
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -2139,17 +1898,6 @@ paths:
           type: string
           format: uuid
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       requestBody:
@@ -2159,6 +1907,7 @@ paths:
               $ref: '#/components/schemas/PatchedPlanChangeRequest'
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -2199,17 +1948,6 @@ paths:
           type: string
           format: uuid
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       requestBody:
@@ -2220,6 +1958,7 @@ paths:
               additionalProperties: {}
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -2263,21 +2002,11 @@ paths:
           type: string
           format: uuid
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -2320,17 +2049,6 @@ paths:
           type: string
           format: uuid
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       requestBody:
@@ -2341,6 +2059,7 @@ paths:
               additionalProperties: {}
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -2385,21 +2104,11 @@ paths:
           type: string
           format: uuid
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -2441,21 +2150,11 @@ paths:
           type: string
           format: uuid
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -2498,17 +2197,6 @@ paths:
           type: string
           format: uuid
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       requestBody:
@@ -2519,6 +2207,7 @@ paths:
               additionalProperties: {}
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -2562,21 +2251,11 @@ paths:
           type: string
           format: uuid
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -2621,6 +2300,7 @@ paths:
               additionalProperties: {}
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -2650,18 +2330,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/admin/legal:
     get:
       operationId: admin_legal_list
@@ -2671,6 +2339,7 @@ paths:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -2701,18 +2370,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
     post:
       operationId: admin_legal_create
       description: Admin view to list all legal documents or create a new policy.
@@ -2727,6 +2384,7 @@ paths:
         required: true
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '201':
           content:
@@ -2755,18 +2413,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/admin/legal/{slug}:
     get:
       operationId: admin_legal_retrieve
@@ -2779,21 +2425,11 @@ paths:
         schema:
           type: string
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -2833,17 +2469,6 @@ paths:
         schema:
           type: string
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       requestBody:
@@ -2854,6 +2479,7 @@ paths:
         required: true
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -2893,17 +2519,6 @@ paths:
         schema:
           type: string
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       requestBody:
@@ -2913,6 +2528,7 @@ paths:
               $ref: '#/components/schemas/PatchedAdminLegalDocumentRequest'
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -2952,21 +2568,11 @@ paths:
         schema:
           type: string
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '204':
           description: No response body
@@ -2991,6 +2597,7 @@ paths:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -3020,18 +2627,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/auth/login:
     post:
       operationId: auth_login_create
@@ -3046,7 +2641,8 @@ paths:
             schema:
               $ref: '#/components/schemas/LoginRequest'
         required: true
-      security: []
+      security:
+      - platformHeader: []
       responses:
         '200':
           content:
@@ -3080,18 +2676,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/auth/logout:
     post:
       operationId: auth_logout_create
@@ -3107,6 +2691,7 @@ paths:
         required: true
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -3149,18 +2734,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/auth/otp/send:
     post:
       operationId: auth_otp_send_create
@@ -3178,7 +2751,8 @@ paths:
             schema:
               $ref: '#/components/schemas/OtpSendRequest'
         required: true
-      security: []
+      security:
+      - platformHeader: []
       responses:
         '200':
           content:
@@ -3220,18 +2794,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/auth/otp/verify:
     post:
       operationId: auth_otp_verify_create
@@ -3249,7 +2811,8 @@ paths:
             schema:
               $ref: '#/components/schemas/OtpVerifyRequest'
         required: true
-      security: []
+      security:
+      - platformHeader: []
       responses:
         '200':
           content:
@@ -3284,18 +2847,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/auth/password/forgot:
     post:
       operationId: auth_password_forgot_create
@@ -3310,7 +2861,8 @@ paths:
             schema:
               $ref: '#/components/schemas/PasswordForgotRequest'
         required: true
-      security: []
+      security:
+      - platformHeader: []
       responses:
         '200':
           content:
@@ -3351,18 +2903,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/auth/password/reset:
     post:
       operationId: auth_password_reset_create
@@ -3378,7 +2918,8 @@ paths:
             schema:
               $ref: '#/components/schemas/PasswordResetRequest'
         required: true
-      security: []
+      security:
+      - platformHeader: []
       responses:
         '200':
           content:
@@ -3421,18 +2962,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/auth/refresh:
     post:
       operationId: auth_refresh_create
@@ -3447,7 +2976,8 @@ paths:
             schema:
               $ref: '#/components/schemas/TokenRefreshRequest'
         required: true
-      security: []
+      security:
+      - platformHeader: []
       responses:
         '200':
           content:
@@ -3483,18 +3013,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/auth/register:
     post:
       operationId: auth_register_create
@@ -3519,7 +3037,8 @@ paths:
                   locale: en
                   timezone: Africa/Cairo
         required: true
-      security: []
+      security:
+      - platformHeader: []
       responses:
         '201':
           content:
@@ -3554,18 +3073,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/business-leads:
     post:
       operationId: business_leads_create
@@ -3586,7 +3093,8 @@ paths:
                   email: hesham@example.com
                   message: Interested in enterprise retention.
         required: true
-      security: []
+      security:
+      - platformHeader: []
       responses:
         '201':
           content:
@@ -3627,18 +3135,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/checkins/respond:
     post:
       operationId: checkins_respond_create
@@ -3650,6 +3146,7 @@ paths:
       - Inactivity
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -3687,18 +3184,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/contacts:
     get:
       operationId: contacts_list
@@ -3724,21 +3209,11 @@ paths:
         schema:
           type: string
         description: Text to look for.
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Contacts
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -3791,6 +3266,7 @@ paths:
         required: true
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '201':
           content:
@@ -3825,18 +3301,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/contacts/{id}:
     patch:
       operationId: contacts_partial_update
@@ -3850,17 +3314,6 @@ paths:
           type: string
           format: uuid
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Contacts
       requestBody:
@@ -3870,6 +3323,7 @@ paths:
               $ref: '#/components/schemas/PatchedContactRequest'
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -3922,21 +3376,11 @@ paths:
           type: string
           format: uuid
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Contacts
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -4001,6 +3445,7 @@ paths:
         required: true
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '201':
           content:
@@ -4035,18 +3480,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/contacts/recent:
     get:
       operationId: contacts_recent_list
@@ -4057,6 +3490,7 @@ paths:
       - Contacts
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -4087,18 +3521,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/devices:
     post:
       operationId: devices_create
@@ -4120,6 +3542,7 @@ paths:
         required: true
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '201':
           content:
@@ -4161,18 +3584,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/faq:
     get:
       operationId: faq_list
@@ -4181,7 +3592,8 @@ paths:
       summary: FAQ
       tags:
       - Support
-      security: []
+      security:
+      - platformHeader: []
       responses:
         '200':
           content:
@@ -4205,18 +3617,6 @@ paths:
                 - data
                 - error
           description: ''
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/health:
     get:
       operationId: health_retrieve
@@ -4265,6 +3665,7 @@ paths:
       - Inactivity
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -4293,18 +3694,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
     put:
       operationId: inactivity_update
       description: Fields left out keep their value. `trustee_contact_id` is one of
@@ -4330,6 +3719,7 @@ paths:
                   trustee_contact_id: c1d2e3f4-5a6b-4c7d-8e9f-0a1b2c3d4e5f
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -4364,18 +3754,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/inbox:
     get:
       operationId: inbox_list
@@ -4397,21 +3775,11 @@ paths:
           at 200.
         schema:
           type: integer
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Inbox
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -4453,21 +3821,11 @@ paths:
           type: string
           format: uuid
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Inbox
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -4511,7 +3869,8 @@ paths:
       - Support
       security:
       - bearerAuth: []
-      - {}
+        platformHeader: []
+      - platformHeader: []
       responses:
         '200':
           content:
@@ -4542,18 +3901,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/legal/{slug}:
     get:
       operationId: legal_retrieve
@@ -4566,22 +3913,12 @@ paths:
         schema:
           type: string
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Support
       security:
       - bearerAuth: []
-      - {}
+        platformHeader: []
+      - platformHeader: []
       responses:
         '200':
           content:
@@ -4619,6 +3956,7 @@ paths:
       - Me
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -4647,18 +3985,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
     patch:
       operationId: me_partial_update
       description: Only `full_name`, `avatar_url`, `locale` and `timezone` change;
@@ -4673,6 +3999,7 @@ paths:
               $ref: '#/components/schemas/PatchedProfileRequest'
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -4707,18 +4034,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
     delete:
       operationId: me_destroy
       description: 'Soft delete: frees the email, removes contacts, messages and media,
@@ -4729,6 +4044,7 @@ paths:
       - Me
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -4764,18 +4080,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/me/home:
     get:
       operationId: me_home_retrieve
@@ -4785,6 +4089,7 @@ paths:
       - Me
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -4813,18 +4118,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/me/pin:
     post:
       operationId: me_pin_create
@@ -4840,6 +4133,7 @@ paths:
         required: true
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -4887,18 +4181,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/me/pin/verify:
     post:
       operationId: me_pin_verify_create
@@ -4914,6 +4196,7 @@ paths:
         required: true
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -4954,18 +4237,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/me/subscription:
     get:
       operationId: me_subscription_retrieve
@@ -4977,6 +4248,7 @@ paths:
       - Me
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -5005,18 +4277,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/media/{id}:
     delete:
       operationId: media_destroy
@@ -5030,21 +4290,11 @@ paths:
           type: string
           format: uuid
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Media
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -5105,17 +4355,6 @@ paths:
           type: string
           format: uuid
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Media
       requestBody:
@@ -5125,6 +4364,7 @@ paths:
               $ref: '#/components/schemas/MediaConfirmRequest'
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -5216,17 +4456,6 @@ paths:
           type: string
           format: uuid
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Media
       requestBody:
@@ -5237,6 +4466,7 @@ paths:
               format: binary
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -5295,6 +4525,7 @@ paths:
         required: true
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -5329,18 +4560,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/message-types:
     get:
       operationId: message_types_list
@@ -5352,20 +4571,10 @@ paths:
         name: Accept-Language
         schema:
           type: string
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Messages
-      security: []
+      security:
+      - platformHeader: []
       responses:
         '200':
           content:
@@ -5427,21 +4636,11 @@ paths:
           - scheduled
           - sent
         description: Only this status.
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Messages
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -5499,6 +4698,7 @@ paths:
         required: true
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '201':
           content:
@@ -5533,18 +4733,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/messages/{id}:
     get:
       operationId: messages_retrieve
@@ -5557,21 +4745,11 @@ paths:
           type: string
           format: uuid
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Messages
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -5620,17 +4798,6 @@ paths:
           type: string
           format: uuid
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Messages
       requestBody:
@@ -5640,6 +4807,7 @@ paths:
               $ref: '#/components/schemas/PatchedMessageWriteRequest'
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -5692,21 +4860,11 @@ paths:
           type: string
           format: uuid
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Messages
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -5762,21 +4920,11 @@ paths:
           type: string
           format: uuid
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Messages
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -5830,21 +4978,11 @@ paths:
           type: string
           format: uuid
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Messages
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -5898,21 +5036,11 @@ paths:
           type: string
           format: uuid
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Messages
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -5965,17 +5093,6 @@ paths:
           type: string
           format: uuid
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Messages
       requestBody:
@@ -5985,6 +5102,7 @@ paths:
               $ref: '#/components/schemas/PatchedSavedFlagRequest'
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -6072,21 +5190,11 @@ paths:
         schema:
           type: string
         description: One type, or several separated by commas.
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Notifications
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -6125,21 +5233,11 @@ paths:
         schema:
           type: integer
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Notifications
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -6183,17 +5281,6 @@ paths:
         schema:
           type: integer
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Notifications
       requestBody:
@@ -6203,6 +5290,7 @@ paths:
               $ref: '#/components/schemas/NotificationUpdateRequest'
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -6240,17 +5328,6 @@ paths:
         schema:
           type: integer
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Notifications
       requestBody:
@@ -6260,6 +5337,7 @@ paths:
               $ref: '#/components/schemas/PatchedNotificationUpdateRequest'
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -6297,21 +5375,11 @@ paths:
         schema:
           type: integer
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Notifications
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '204':
           description: No response body
@@ -6333,21 +5401,11 @@ paths:
         schema:
           type: integer
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Notifications
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -6399,6 +5457,7 @@ paths:
               additionalProperties: {}
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '201':
           content:
@@ -6440,18 +5499,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/notifications/clear-all:
     delete:
       operationId: notifications_clear_all_destroy
@@ -6460,6 +5507,7 @@ paths:
       - Notifications
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -6488,18 +5536,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/notifications/mark-all-read:
     post:
       operationId: notifications_mark_all_read_create
@@ -6508,6 +5544,7 @@ paths:
       - Notifications
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -6536,18 +5573,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/notifications/unread-count:
     get:
       operationId: notifications_unread_count_retrieve
@@ -6556,6 +5581,7 @@ paths:
       - Notifications
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -6584,18 +5610,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/plans:
     get:
       operationId: plans_list
@@ -6605,7 +5619,8 @@ paths:
       summary: Plans
       tags:
       - Plans
-      security: []
+      security:
+      - platformHeader: []
       responses:
         '200':
           content:
@@ -6629,18 +5644,6 @@ paths:
                 - data
                 - error
           description: ''
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/r/{token}:
     get:
       operationId: r_retrieve
@@ -6654,20 +5657,10 @@ paths:
           type: string
         description: The token from the link /r/{token} in the delivery email.
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Recipient link
-      security: []
+      security:
+      - platformHeader: []
       responses:
         '200':
           content:
@@ -6719,17 +5712,6 @@ paths:
           type: string
         description: The token from the link /r/{token} in the delivery email.
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Recipient link
       requestBody:
@@ -6737,7 +5719,8 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/RecipientSessionRequest'
-      security: []
+      security:
+      - platformHeader: []
       responses:
         '200':
           content:
@@ -6797,17 +5780,6 @@ paths:
           type: string
         description: The token from the link /r/{token} in the delivery email.
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Recipient link
       requestBody:
@@ -6815,7 +5787,8 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/RecipientSessionRequest'
-      security: []
+      security:
+      - platformHeader: []
       responses:
         '200':
           content:
@@ -6870,17 +5843,6 @@ paths:
           type: string
         description: The token from the link /r/{token} in the delivery email.
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Recipient link
       requestBody:
@@ -6889,7 +5851,8 @@ paths:
             schema:
               $ref: '#/components/schemas/RecipientVerifyRequest'
         required: true
-      security: []
+      security:
+      - platformHeader: []
       responses:
         '200':
           content:
@@ -6940,6 +5903,7 @@ paths:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -6970,18 +5934,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
     post:
       operationId: support_admin_categories_create
       description: Admin view to list all categories with statistics or add a new
@@ -6997,6 +5949,7 @@ paths:
         required: true
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '201':
           content:
@@ -7025,18 +5978,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/support/admin/categories/{id}:
     get:
       operationId: support_admin_categories_retrieve
@@ -7048,21 +5989,11 @@ paths:
         schema:
           type: integer
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -7101,17 +6032,6 @@ paths:
         schema:
           type: integer
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       requestBody:
@@ -7122,6 +6042,7 @@ paths:
         required: true
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -7160,17 +6081,6 @@ paths:
         schema:
           type: integer
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       requestBody:
@@ -7180,6 +6090,7 @@ paths:
               $ref: '#/components/schemas/PatchedAdminSupportCategoryRequest'
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -7218,21 +6129,11 @@ paths:
         schema:
           type: integer
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '204':
           description: No response body
@@ -7264,21 +6165,11 @@ paths:
           at 200.
         schema:
           type: integer
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -7322,6 +6213,7 @@ paths:
         required: true
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '201':
           content:
@@ -7350,18 +6242,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/support/admin/faqs/{id}:
     get:
       operationId: support_admin_faqs_retrieve
@@ -7373,21 +6253,11 @@ paths:
         schema:
           type: integer
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -7426,17 +6296,6 @@ paths:
         schema:
           type: integer
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       requestBody:
@@ -7447,6 +6306,7 @@ paths:
         required: true
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -7485,17 +6345,6 @@ paths:
         schema:
           type: integer
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       requestBody:
@@ -7505,6 +6354,7 @@ paths:
               $ref: '#/components/schemas/PatchedSupportFAQRequest'
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -7543,21 +6393,11 @@ paths:
         schema:
           type: integer
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '204':
           description: No response body
@@ -7588,21 +6428,11 @@ paths:
           at 200.
         schema:
           type: integer
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -7643,17 +6473,6 @@ paths:
           type: string
           format: uuid
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       requestBody:
@@ -7663,6 +6482,7 @@ paths:
               $ref: '#/components/schemas/PatchedBusinessLeadStatusRequest'
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -7711,21 +6531,11 @@ paths:
           at 200.
         schema:
           type: integer
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -7765,21 +6575,11 @@ paths:
         schema:
           type: integer
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -7818,17 +6618,6 @@ paths:
         schema:
           type: integer
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       requestBody:
@@ -7838,6 +6627,7 @@ paths:
               $ref: '#/components/schemas/AdminTicketUpdateRequest'
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -7876,17 +6666,6 @@ paths:
         schema:
           type: integer
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       requestBody:
@@ -7896,6 +6675,7 @@ paths:
               $ref: '#/components/schemas/PatchedAdminTicketUpdateRequest'
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -7935,17 +6715,6 @@ paths:
         schema:
           type: integer
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Admin
       requestBody:
@@ -7956,6 +6725,7 @@ paths:
               additionalProperties: {}
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -7994,6 +6764,7 @@ paths:
       - Admin
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -8023,18 +6794,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/support/categories:
     get:
       operationId: support_categories_list
@@ -8044,7 +6803,8 @@ paths:
       - Support
       security:
       - bearerAuth: []
-      - {}
+        platformHeader: []
+      - platformHeader: []
       responses:
         '200':
           content:
@@ -8075,18 +6835,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/support/faqs:
     get:
       operationId: support_faqs_list
@@ -8096,7 +6844,8 @@ paths:
       - Support
       security:
       - bearerAuth: []
-      - {}
+        platformHeader: []
+      - platformHeader: []
       responses:
         '200':
           content:
@@ -8127,18 +6876,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/support/tickets:
     get:
       operationId: support_tickets_list
@@ -8159,21 +6896,11 @@ paths:
           at 200.
         schema:
           type: integer
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Support
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -8216,6 +6943,7 @@ paths:
         required: true
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '201':
           content:
@@ -8244,18 +6972,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-      parameters:
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
   /api/v1/support/tickets/{id}:
     get:
       operationId: support_tickets_retrieve
@@ -8267,21 +6983,11 @@ paths:
         schema:
           type: integer
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Support
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -8321,17 +7027,6 @@ paths:
         schema:
           type: integer
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Support
       requestBody:
@@ -8342,6 +7037,7 @@ paths:
               additionalProperties: {}
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '200':
           content:
@@ -8381,17 +7077,6 @@ paths:
         schema:
           type: integer
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Support
       requestBody:
@@ -8402,6 +7087,7 @@ paths:
         required: true
       security:
       - bearerAuth: []
+        platformHeader: []
       responses:
         '201':
           content:
@@ -8443,20 +7129,10 @@ paths:
         description: The token from the link /trustee/{token} emailed to the trusted
           contact.
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Trustee
-      security: []
+      security:
+      - platformHeader: []
       responses:
         '200':
           content:
@@ -8505,17 +7181,6 @@ paths:
         description: The token from the link /trustee/{token} emailed to the trusted
           contact.
         required: true
-      - in: header
-        name: X-Platform
-        required: true
-        schema:
-          type: string
-          enum:
-          - ios
-          - android
-          - web
-        description: 'The client platform. A missing or unknown value gets a 400.
-          error.code: `invalid_platform`.'
       tags:
       - Trustee
       requestBody:
@@ -8529,7 +7194,8 @@ paths:
                   decision: confirmed
                   note: ''
         required: true
-      security: []
+      security:
+      - platformHeader: []
       responses:
         '200':
           content:
@@ -8710,6 +7376,87 @@ components:
       - opened_at
       - sent_at
       - status
+    AdminForceUpdate:
+      type: object
+      properties:
+        platform:
+          allOf:
+          - $ref: '#/components/schemas/AdminForceUpdatePlatformEnum'
+          readOnly: true
+        minimum_code:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 1
+          format: int64
+        latest_code:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 1
+          format: int64
+          nullable: true
+        title:
+          type: string
+          maxLength: 200
+        body:
+          type: string
+        link:
+          type: string
+          format: uri
+          maxLength: 500
+        is_active:
+          type: boolean
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - body
+      - link
+      - minimum_code
+      - platform
+      - title
+      - updated_at
+    AdminForceUpdatePlatformEnum:
+      enum:
+      - ios
+      - android
+      type: string
+      description: |-
+        * `ios` - iOS
+        * `android` - Android
+    AdminForceUpdateRequest:
+      type: object
+      properties:
+        minimum_code:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 1
+          format: int64
+        latest_code:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 1
+          format: int64
+          nullable: true
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        body:
+          type: string
+          minLength: 1
+        link:
+          type: string
+          format: uri
+          minLength: 1
+          maxLength: 500
+        is_active:
+          type: boolean
+      required:
+      - body
+      - link
+      - minimum_code
+      - title
     AdminInactivity:
       type: object
       description: 'One user''s switch. Expects `user` selected. No trustee identity:
@@ -9528,6 +8275,7 @@ components:
       - PLAN_CREATED
       - PLAN_UPDATED
       - PLAN_DELETED
+      - FORCE_UPDATE_CHANGED
       type: string
       description: |-
         * `USER_CREATED` - User Created
@@ -9550,6 +8298,7 @@ components:
         * `PLAN_CREATED` - Plan Created
         * `PLAN_UPDATED` - Plan Updated
         * `PLAN_DELETED` - Plan Deleted
+        * `FORCE_UPDATE_CHANGED` - Force Update Changed
     AuthTokens:
       type: object
       properties:
@@ -9916,6 +8665,16 @@ components:
           type: string
       required:
       - detail
+    DevicePlatformEnum:
+      enum:
+      - ios
+      - android
+      - web
+      type: string
+      description: |-
+        * `ios` - iOS
+        * `android` - Android
+        * `web` - Web
     DeviceRequest:
       type: object
       properties:
@@ -9924,7 +8683,7 @@ components:
           minLength: 1
           maxLength: 512
         platform:
-          $ref: '#/components/schemas/PlatformEnum'
+          $ref: '#/components/schemas/DevicePlatformEnum'
       required:
       - fcm_token
       - platform
@@ -9950,6 +8709,8 @@ components:
       properties:
         force_update:
           type: boolean
+        optional_update:
+          type: boolean
         title:
           type: string
           nullable: true
@@ -9964,6 +8725,7 @@ components:
       - body
       - force_update
       - link
+      - optional_update
       - title
     Health:
       type: object
@@ -11409,16 +10171,6 @@ components:
       - name
       - price
       - storage_years
-    PlatformEnum:
-      enum:
-      - ios
-      - android
-      - web
-      type: string
-      description: |-
-        * `ios` - iOS
-        * `android` - Android
-        * `web` - Web
     PriorityEnum:
       enum:
       - low
@@ -12312,11 +11064,114 @@ components:
       bearerFormat: JWT
       description: The `access` token from /auth/register, /auth/login or /auth/refresh
         (valid 15 minutes).
+    platformHeader:
+      type: apiKey
+      in: header
+      name: X-Platform
+      description: 'The client platform: `ios`, `android`, `web`. A missing or unknown
+        value gets a 400. error.code: `invalid_platform`.'
 tags:
 - name: Force Update
   description: App version and mandatory update check.
 - name: Auth
-  description: Sign up, sign in, tokens, emailed codes and password reset.
+  description: |-
+    Sign up, sign in, tokens, emailed codes and password reset.
+
+    **Every request** sends `X-Platform`. **Any request** can get `429 throttled`: wait for `Retry-After`.
+
+    **A. App start**
+
+    ```text
+    GET /force-update?force_update_code=<build>
+      +-- force_update: true -----> Blocking update screen. Stop.
+      +-- optional_update: true --> Dismissible dialog, then continue.
+      +-- both false -------------> Continue.
+      |
+      v
+    Refresh token stored?
+      +-- no ---> Sign-in screen (B or C)
+      +-- yes --> Home (D)
+    ```
+
+    **B. Register and verify the email**
+
+    ```text
+    POST /auth/register {full_name, email, password}
+      +-- 400 validation_error --> Show details per field.
+      |
+      v 201 {user, access, refresh}
+    Store both tokens. The user is signed in. A code is emailed.
+      |
+      v
+    Code screen
+      +-- Resend --> POST /auth/otp/send {target, purpose: verify_email}
+      +-- Later ---> Home. The inbox stays empty, and support ticket
+      |              writes get 403 email_not_verified.
+      v
+    POST /auth/otp/verify {target, code, purpose: verify_email}
+      +-- 400 invalid --> Try again.
+      +-- 400 no_code, expired, attempts_exhausted --> Resend.
+      |
+      v 200 {verified: true}
+    GET /me: email_verified_at is set. Home.
+    ```
+
+    **C. Log in**
+
+    ```text
+    POST /auth/login {email, password}
+      +-- 400 invalid_credentials --> "Email or password is wrong."
+      |
+      v 200 {user, access, refresh}
+    Store both tokens.
+      +-- user.email_verified_at is null --> No code was sent. To verify:
+      |     POST /auth/otp/send, then the code screen in B.
+      v
+    Home
+    ```
+
+    **D. Any authenticated request**
+
+    ```text
+    Request with Authorization: Bearer <access>
+      +-- Not 401 --> Handle the response.
+      |
+      v 401 unauthorized
+    POST /auth/refresh {refresh}    (once; refresh stays the same)
+      +-- 200 {access} --------> Store access. Retry the request.
+      +-- 401 unauthorized ----> Clear tokens. Sign-in screen.
+    ```
+
+    **E. Forgot password**
+
+    ```text
+    POST /auth/password/forgot {email}    (always 200)
+      |
+      v  A code is emailed.
+      +-- One screen:
+      |     POST /auth/password/reset {email, code, new_password}
+      |
+      +-- Two screens:
+            POST /auth/otp/verify {target, code, purpose: reset_password}
+              v 200 {verified: true, reset_token}
+            POST /auth/password/reset
+                 {email, code: <reset_token>, new_password}
+
+    Result of /auth/password/reset:
+      +-- 400 validation_error ----> Code still valid. Ask for a new password.
+      +-- 400 invalid -------------> Try again.
+      +-- 400 no_code, expired, attempts_exhausted,
+      |       invalid_reset_token -> Start again from /auth/password/forgot.
+      +-- 200 ---------------------> Every session is revoked.
+                                     Clear tokens. Sign-in screen.
+    ```
+
+    **F. Log out**
+
+    ```text
+    POST /auth/logout {refresh} with Authorization: Bearer <access>
+      +-- 200, or 400 invalid_token --> Clear tokens. Sign-in screen.
+    ```
 - name: Me
   description: 'The signed-in user: profile, home screen, PIN and plan usage.'
 - name: Plans

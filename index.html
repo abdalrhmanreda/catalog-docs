@@ -217,7 +217,7 @@
         "/api/v1/force-update": {
             "get": {
                 "operationId": "force_update_retrieve",
-                "description": "Public. Compares `force_update_code` with the minimum code for the `X-Platform` platform. A build below the minimum gets `force_update: true` plus that platform's title, body and store link. Otherwise `force_update` is false and the other fields are null.",
+                "description": "Public. Compares `force_update_code` with the minimum and latest codes for the `X-Platform` platform. A build below the minimum gets `force_update: true`. A build at or above the minimum but below the latest gets `optional_update: true`. Both get that platform's title, body and store link. Otherwise both flags are false and the other fields are null.",
                 "summary": "Check whether this app build must update",
                 "parameters": [
                     {
@@ -229,26 +229,16 @@
                         },
                         "description": "The integer build code from the app's pubspec YAML.",
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
                     "Force Update"
                 ],
-                "security": [],
+                "security": [
+                    {
+                        "platformHeader": []
+                    }
+                ],
                 "responses": {
                     "200": {
                         "content": {
@@ -325,20 +315,6 @@
                         "schema": {
                             "type": "integer"
                         }
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -346,7 +322,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -448,20 +425,6 @@
                                 "sent"
                             ]
                         }
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -469,7 +432,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -529,20 +493,6 @@
                             "format": "uuid"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -550,7 +500,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -619,20 +570,6 @@
                         "schema": {
                             "type": "integer"
                         }
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -640,7 +577,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -696,7 +634,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -740,23 +679,144 @@
                             }
                         }
                     }
-                },
+                }
+            }
+        },
+        "/api/v1/admin/control/force-update": {
+            "get": {
+                "operationId": "admin_control_force_update_list",
+                "description": "GET /api/v1/admin/control/force-update\n\nOne entry per mobile platform. A platform nobody configured yet comes back\nwith `minimum_code` null and `is_active` false, so the console can show it.",
+                "summary": "List the minimum app build per platform",
+                "tags": [
+                    "Admin"
+                ],
+                "security": [
+                    {
+                        "bearerAuth": [],
+                        "platformHeader": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status_code": {
+                                            "type": "integer",
+                                            "example": 200
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/AdminForceUpdate"
+                                            }
+                                        },
+                                        "error": {
+                                            "nullable": true,
+                                            "description": "Always null on success.",
+                                            "example": null
+                                        }
+                                    },
+                                    "required": [
+                                        "status_code",
+                                        "data",
+                                        "error"
+                                    ]
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "401": {
+                        "description": "Missing, invalid or expired access token, or the account can no longer sign in. error.code: `unauthorized`.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorEnvelope"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/control/force-update/{platform}": {
+            "put": {
+                "operationId": "admin_control_force_update_update",
+                "description": "PUT /api/v1/admin/control/force-update/<ios|android>\n\nCreates the platform's rule or replaces it, audited as FORCE_UPDATE_CHANGED.\nSetting `is_active` false stops forcing updates and keeps the text.",
+                "summary": "Set the minimum app build for a platform",
                 "parameters": [
                     {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
+                        "in": "path",
+                        "name": "platform",
                         "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
+                            "type": "string"
                         },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
+                        "required": true
                     }
-                ]
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AdminForceUpdateRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "bearerAuth": [],
+                        "platformHeader": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status_code": {
+                                            "type": "integer",
+                                            "example": 200
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/AdminForceUpdate"
+                                        },
+                                        "error": {
+                                            "nullable": true,
+                                            "description": "Always null on success.",
+                                            "example": null
+                                        }
+                                    },
+                                    "required": [
+                                        "status_code",
+                                        "data",
+                                        "error"
+                                    ]
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "401": {
+                        "description": "Missing, invalid or expired access token, or the account can no longer sign in. error.code: `unauthorized`.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorEnvelope"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "/api/v1/admin/control/inactivity": {
@@ -803,20 +863,6 @@
                                 "warning"
                             ]
                         }
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -824,7 +870,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -905,20 +952,6 @@
                         "schema": {
                             "type": "integer"
                         }
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -926,7 +959,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -995,20 +1029,6 @@
                         "schema": {
                             "type": "integer"
                         }
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -1016,7 +1036,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -1082,7 +1103,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -1126,23 +1148,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/admin/control/logs/stats": {
@@ -1155,7 +1161,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -1199,23 +1206,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/admin/control/me": {
@@ -1228,7 +1219,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -1272,23 +1264,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/admin/control/messages": {
@@ -1370,20 +1346,6 @@
                                 "occasion"
                             ]
                         }
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -1391,7 +1353,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -1451,20 +1414,6 @@
                             "format": "uuid"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -1472,7 +1421,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -1528,7 +1478,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -1572,23 +1523,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/admin/control/plans": {
@@ -1614,20 +1549,6 @@
                         "schema": {
                             "type": "integer"
                         }
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -1635,7 +1556,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -1699,7 +1621,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -1742,23 +1665,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/admin/control/plans/{id}": {
@@ -1775,20 +1682,6 @@
                             "format": "uuid"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -1796,7 +1689,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -1854,20 +1748,6 @@
                             "format": "uuid"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -1884,7 +1764,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -1942,20 +1823,6 @@
                             "format": "uuid"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -1963,7 +1830,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -1993,7 +1861,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -2037,23 +1906,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             },
             "post": {
                 "operationId": "admin_control_roles_create",
@@ -2074,7 +1927,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -2118,23 +1972,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/admin/control/roles/{id}": {
@@ -2150,20 +1988,6 @@
                             "type": "integer"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -2171,7 +1995,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -2229,20 +2054,6 @@
                             "type": "integer"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -2260,7 +2071,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -2318,20 +2130,6 @@
                             "type": "integer"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -2339,7 +2137,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -2372,20 +2171,6 @@
                             "type": "integer"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -2393,7 +2178,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -2451,20 +2237,6 @@
                             "type": "integer"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -2482,7 +2254,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -2539,7 +2312,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -2583,23 +2357,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/admin/control/stats/overview": {
@@ -2612,7 +2370,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -2656,23 +2415,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/admin/control/stats/timeseries": {
@@ -2700,20 +2443,6 @@
                             ]
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -2721,7 +2450,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -2843,20 +2573,6 @@
                             "type": "boolean"
                         },
                         "description": "E-mail verified or not."
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -2864,7 +2580,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -2924,20 +2641,6 @@
                             "format": "uuid"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -2945,7 +2648,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -3005,20 +2709,6 @@
                             "format": "uuid"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -3036,7 +2726,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -3097,20 +2788,6 @@
                             "format": "uuid"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -3127,7 +2804,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -3187,20 +2865,6 @@
                             "format": "uuid"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -3218,7 +2882,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -3279,20 +2944,6 @@
                             "format": "uuid"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -3300,7 +2951,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -3359,20 +3011,6 @@
                             "format": "uuid"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -3390,7 +3028,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -3451,20 +3090,6 @@
                             "format": "uuid"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -3472,7 +3097,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -3532,20 +3158,6 @@
                             "format": "uuid"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -3553,7 +3165,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -3613,20 +3226,6 @@
                             "format": "uuid"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -3644,7 +3243,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -3705,20 +3305,6 @@
                             "format": "uuid"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -3726,7 +3312,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -3792,7 +3379,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -3836,23 +3424,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/admin/legal": {
@@ -3865,7 +3437,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -3911,23 +3484,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             },
             "post": {
                 "operationId": "admin_legal_create",
@@ -3948,7 +3505,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -3991,23 +3549,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/admin/legal/{slug}": {
@@ -4023,20 +3565,6 @@
                             "type": "string"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -4044,7 +3572,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -4101,20 +3630,6 @@
                             "type": "string"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -4132,7 +3647,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -4189,20 +3705,6 @@
                             "type": "string"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -4219,7 +3721,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -4276,20 +3779,6 @@
                             "type": "string"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -4297,7 +3786,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -4327,7 +3817,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -4371,23 +3862,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/auth/login": {
@@ -4408,7 +3883,11 @@
                     },
                     "required": true
                 },
-                "security": [],
+                "security": [
+                    {
+                        "platformHeader": []
+                    }
+                ],
                 "responses": {
                     "200": {
                         "content": {
@@ -4459,23 +3938,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/auth/logout": {
@@ -4498,7 +3961,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -4562,23 +4026,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/auth/otp/send": {
@@ -4599,7 +4047,11 @@
                     },
                     "required": true
                 },
-                "security": [],
+                "security": [
+                    {
+                        "platformHeader": []
+                    }
+                ],
                 "responses": {
                     "200": {
                         "content": {
@@ -4662,23 +4114,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/auth/otp/verify": {
@@ -4699,7 +4135,11 @@
                     },
                     "required": true
                 },
-                "security": [],
+                "security": [
+                    {
+                        "platformHeader": []
+                    }
+                ],
                 "responses": {
                     "200": {
                         "content": {
@@ -4750,23 +4190,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/auth/password/forgot": {
@@ -4787,7 +4211,11 @@
                     },
                     "required": true
                 },
-                "security": [],
+                "security": [
+                    {
+                        "platformHeader": []
+                    }
+                ],
                 "responses": {
                     "200": {
                         "content": {
@@ -4849,23 +4277,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/auth/password/reset": {
@@ -4886,7 +4298,11 @@
                     },
                     "required": true
                 },
-                "security": [],
+                "security": [
+                    {
+                        "platformHeader": []
+                    }
+                ],
                 "responses": {
                     "200": {
                         "content": {
@@ -4948,23 +4364,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/auth/refresh": {
@@ -4985,7 +4385,11 @@
                     },
                     "required": true
                 },
-                "security": [],
+                "security": [
+                    {
+                        "platformHeader": []
+                    }
+                ],
                 "responses": {
                     "200": {
                         "content": {
@@ -5036,23 +4440,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/auth/register": {
@@ -5085,7 +4473,11 @@
                     },
                     "required": true
                 },
-                "security": [],
+                "security": [
+                    {
+                        "platformHeader": []
+                    }
+                ],
                 "responses": {
                     "201": {
                         "content": {
@@ -5136,23 +4528,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/business-leads": {
@@ -5183,7 +4559,11 @@
                     },
                     "required": true
                 },
-                "security": [],
+                "security": [
+                    {
+                        "platformHeader": []
+                    }
+                ],
                 "responses": {
                     "201": {
                         "content": {
@@ -5245,23 +4625,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/checkins/respond": {
@@ -5274,7 +4638,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -5330,23 +4695,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/contacts": {
@@ -5380,20 +4729,6 @@
                             "type": "string"
                         },
                         "description": "Text to look for."
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -5401,7 +4736,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -5475,7 +4811,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -5528,23 +4865,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/contacts/{id}": {
@@ -5561,20 +4882,6 @@
                             "format": "uuid"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -5591,7 +4898,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -5669,20 +4977,6 @@
                             "format": "uuid"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -5690,7 +4984,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -5787,7 +5082,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -5840,23 +5136,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/contacts/recent": {
@@ -5869,7 +5149,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -5915,23 +5196,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/devices": {
@@ -5962,7 +5227,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -6026,23 +5292,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/faq": {
@@ -6053,7 +5303,11 @@
                 "tags": [
                     "Support"
                 ],
-                "security": [],
+                "security": [
+                    {
+                        "platformHeader": []
+                    }
+                ],
                 "responses": {
                     "200": {
                         "content": {
@@ -6087,23 +5341,7 @@
                         },
                         "description": ""
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/health": {
@@ -6168,7 +5406,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -6211,23 +5450,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             },
             "put": {
                 "operationId": "inactivity_update",
@@ -6259,7 +5482,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -6312,23 +5536,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/inbox": {
@@ -6354,20 +5562,6 @@
                         "schema": {
                             "type": "integer"
                         }
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -6375,7 +5569,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -6435,20 +5630,6 @@
                             "format": "uuid"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -6456,7 +5637,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -6522,9 +5704,12 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     },
-                    {}
+                    {
+                        "platformHeader": []
+                    }
                 ],
                 "responses": {
                     "200": {
@@ -6569,23 +5754,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/legal/{slug}": {
@@ -6601,20 +5770,6 @@
                             "type": "string"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -6622,9 +5777,12 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     },
-                    {}
+                    {
+                        "platformHeader": []
+                    }
                 ],
                 "responses": {
                     "200": {
@@ -6679,7 +5837,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -6722,23 +5881,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             },
             "patch": {
                 "operationId": "me_partial_update",
@@ -6758,7 +5901,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -6811,23 +5955,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             },
             "delete": {
                 "operationId": "me_destroy",
@@ -6838,7 +5966,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -6892,23 +6021,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/me/home": {
@@ -6921,7 +6034,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -6964,23 +6078,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/me/pin": {
@@ -7003,7 +6101,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -7077,23 +6176,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/me/pin/verify": {
@@ -7116,7 +6199,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -7179,23 +6263,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/me/subscription": {
@@ -7208,7 +6276,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -7251,23 +6320,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/media/{id}": {
@@ -7284,20 +6337,6 @@
                             "format": "uuid"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -7305,7 +6344,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -7396,20 +6436,6 @@
                             "format": "uuid"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -7426,7 +6452,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -7560,20 +6587,6 @@
                             "format": "uuid"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -7591,7 +6604,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -7677,7 +6691,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -7730,23 +6745,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/message-types": {
@@ -7761,26 +6760,16 @@
                         "schema": {
                             "type": "string"
                         }
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
                     "Messages"
                 ],
-                "security": [],
+                "security": [
+                    {
+                        "platformHeader": []
+                    }
+                ],
                 "responses": {
                     "200": {
                         "content": {
@@ -7865,20 +6854,6 @@
                             ]
                         },
                         "description": "Only this status."
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -7886,7 +6861,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -7966,7 +6942,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -8019,23 +6996,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/messages/{id}": {
@@ -8052,20 +7013,6 @@
                             "format": "uuid"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -8073,7 +7020,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -8141,20 +7089,6 @@
                             "format": "uuid"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -8171,7 +7105,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -8249,20 +7184,6 @@
                             "format": "uuid"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -8270,7 +7191,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -8351,20 +7273,6 @@
                             "format": "uuid"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -8372,7 +7280,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -8452,20 +7361,6 @@
                             "format": "uuid"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -8473,7 +7368,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -8553,20 +7449,6 @@
                             "format": "uuid"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -8574,7 +7456,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -8654,20 +7537,6 @@
                             "format": "uuid"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -8684,7 +7553,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -8811,20 +7681,6 @@
                             "type": "string"
                         },
                         "description": "One type, or several separated by commas."
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -8832,7 +7688,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -8890,20 +7747,6 @@
                             "type": "integer"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -8911,7 +7754,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -8977,20 +7821,6 @@
                             "type": "integer"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -9007,7 +7837,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -9063,20 +7894,6 @@
                             "type": "integer"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -9093,7 +7910,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -9149,20 +7967,6 @@
                             "type": "integer"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -9170,7 +7974,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -9203,20 +8008,6 @@
                             "type": "integer"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -9224,7 +8015,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -9300,7 +8092,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -9364,23 +8157,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/notifications/clear-all": {
@@ -9392,7 +8169,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -9435,23 +8213,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/notifications/mark-all-read": {
@@ -9463,7 +8225,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -9506,23 +8269,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/notifications/unread-count": {
@@ -9534,7 +8281,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -9577,23 +8325,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/plans": {
@@ -9604,7 +8336,11 @@
                 "tags": [
                     "Plans"
                 ],
-                "security": [],
+                "security": [
+                    {
+                        "platformHeader": []
+                    }
+                ],
                 "responses": {
                     "200": {
                         "content": {
@@ -9638,23 +8374,7 @@
                         },
                         "description": ""
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/r/{token}": {
@@ -9671,26 +8391,16 @@
                         },
                         "description": "The token from the link /r/{token} in the delivery email.",
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
                     "Recipient link"
                 ],
-                "security": [],
+                "security": [
+                    {
+                        "platformHeader": []
+                    }
+                ],
                 "responses": {
                     "200": {
                         "content": {
@@ -9766,20 +8476,6 @@
                         },
                         "description": "The token from the link /r/{token} in the delivery email.",
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -9794,7 +8490,11 @@
                         }
                     }
                 },
-                "security": [],
+                "security": [
+                    {
+                        "platformHeader": []
+                    }
+                ],
                 "responses": {
                     "200": {
                         "content": {
@@ -9880,20 +8580,6 @@
                         },
                         "description": "The token from the link /r/{token} in the delivery email.",
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -9908,7 +8594,11 @@
                         }
                     }
                 },
-                "security": [],
+                "security": [
+                    {
+                        "platformHeader": []
+                    }
+                ],
                 "responses": {
                     "200": {
                         "content": {
@@ -9986,20 +8676,6 @@
                         },
                         "description": "The token from the link /r/{token} in the delivery email.",
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -10015,7 +8691,11 @@
                     },
                     "required": true
                 },
-                "security": [],
+                "security": [
+                    {
+                        "platformHeader": []
+                    }
+                ],
                 "responses": {
                     "200": {
                         "content": {
@@ -10089,7 +8769,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -10135,23 +8816,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             },
             "post": {
                 "operationId": "support_admin_categories_create",
@@ -10172,7 +8837,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -10215,23 +8881,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/support/admin/categories/{id}": {
@@ -10247,20 +8897,6 @@
                             "type": "integer"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -10268,7 +8904,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -10325,20 +8962,6 @@
                             "type": "integer"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -10356,7 +8979,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -10413,20 +9037,6 @@
                             "type": "integer"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -10443,7 +9053,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -10500,20 +9111,6 @@
                             "type": "integer"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -10521,7 +9118,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -10564,20 +9162,6 @@
                         "schema": {
                             "type": "integer"
                         }
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -10585,7 +9169,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -10649,7 +9234,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -10692,23 +9278,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/support/admin/faqs/{id}": {
@@ -10724,20 +9294,6 @@
                             "type": "integer"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -10745,7 +9301,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -10802,20 +9359,6 @@
                             "type": "integer"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -10833,7 +9376,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -10890,20 +9434,6 @@
                             "type": "integer"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -10920,7 +9450,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -10977,20 +9508,6 @@
                             "type": "integer"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -10998,7 +9515,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -11041,20 +9559,6 @@
                         "schema": {
                             "type": "integer"
                         }
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -11062,7 +9566,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -11122,20 +9627,6 @@
                             "format": "uuid"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -11152,7 +9643,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -11221,20 +9713,6 @@
                         "schema": {
                             "type": "integer"
                         }
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -11242,7 +9720,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -11301,20 +9780,6 @@
                             "type": "integer"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -11322,7 +9787,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -11379,20 +9845,6 @@
                             "type": "integer"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -11409,7 +9861,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -11466,20 +9919,6 @@
                             "type": "integer"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -11496,7 +9935,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -11555,20 +9995,6 @@
                             "type": "integer"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -11586,7 +10012,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -11643,7 +10070,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -11687,23 +10115,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/support/categories": {
@@ -11716,9 +10128,12 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     },
-                    {}
+                    {
+                        "platformHeader": []
+                    }
                 ],
                 "responses": {
                     "200": {
@@ -11763,23 +10178,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/support/faqs": {
@@ -11792,9 +10191,12 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     },
-                    {}
+                    {
+                        "platformHeader": []
+                    }
                 ],
                 "responses": {
                     "200": {
@@ -11839,23 +10241,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/support/tickets": {
@@ -11881,20 +10267,6 @@
                         "schema": {
                             "type": "integer"
                         }
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -11902,7 +10274,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -11966,7 +10339,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -12009,23 +10383,7 @@
                             }
                         }
                     }
-                },
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
-                    }
-                ]
+                }
             }
         },
         "/api/v1/support/tickets/{id}": {
@@ -12041,20 +10399,6 @@
                             "type": "integer"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -12062,7 +10406,8 @@
                 ],
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -12121,20 +10466,6 @@
                             "type": "integer"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -12152,7 +10483,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -12211,20 +10543,6 @@
                             "type": "integer"
                         },
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -12242,7 +10560,8 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "bearerAuth": [],
+                        "platformHeader": []
                     }
                 ],
                 "responses": {
@@ -12302,26 +10621,16 @@
                         },
                         "description": "The token from the link /trustee/{token} emailed to the trusted contact.",
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
                     "Trustee"
                 ],
-                "security": [],
+                "security": [
+                    {
+                        "platformHeader": []
+                    }
+                ],
                 "responses": {
                     "200": {
                         "content": {
@@ -12389,20 +10698,6 @@
                         },
                         "description": "The token from the link /trustee/{token} emailed to the trusted contact.",
                         "required": true
-                    },
-                    {
-                        "in": "header",
-                        "name": "X-Platform",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "ios",
-                                "android",
-                                "web"
-                            ]
-                        },
-                        "description": "The client platform. A missing or unknown value gets a 400. error.code: `invalid_platform`."
                     }
                 ],
                 "tags": [
@@ -12426,7 +10721,11 @@
                     },
                     "required": true
                 },
-                "security": [],
+                "security": [
+                    {
+                        "platformHeader": []
+                    }
+                ],
                 "responses": {
                     "200": {
                         "content": {
@@ -12689,6 +10988,110 @@
                     "opened_at",
                     "sent_at",
                     "status"
+                ]
+            },
+            "AdminForceUpdate": {
+                "type": "object",
+                "properties": {
+                    "platform": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AdminForceUpdatePlatformEnum"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "minimum_code": {
+                        "type": "integer",
+                        "maximum": 9223372036854775807,
+                        "minimum": 1,
+                        "format": "int64"
+                    },
+                    "latest_code": {
+                        "type": "integer",
+                        "maximum": 9223372036854775807,
+                        "minimum": 1,
+                        "format": "int64",
+                        "nullable": true
+                    },
+                    "title": {
+                        "type": "string",
+                        "maxLength": 200
+                    },
+                    "body": {
+                        "type": "string"
+                    },
+                    "link": {
+                        "type": "string",
+                        "format": "uri",
+                        "maxLength": 500
+                    },
+                    "is_active": {
+                        "type": "boolean"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "body",
+                    "link",
+                    "minimum_code",
+                    "platform",
+                    "title",
+                    "updated_at"
+                ]
+            },
+            "AdminForceUpdatePlatformEnum": {
+                "enum": [
+                    "ios",
+                    "android"
+                ],
+                "type": "string",
+                "description": "* `ios` - iOS\n* `android` - Android"
+            },
+            "AdminForceUpdateRequest": {
+                "type": "object",
+                "properties": {
+                    "minimum_code": {
+                        "type": "integer",
+                        "maximum": 9223372036854775807,
+                        "minimum": 1,
+                        "format": "int64"
+                    },
+                    "latest_code": {
+                        "type": "integer",
+                        "maximum": 9223372036854775807,
+                        "minimum": 1,
+                        "format": "int64",
+                        "nullable": true
+                    },
+                    "title": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                    },
+                    "body": {
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "link": {
+                        "type": "string",
+                        "format": "uri",
+                        "minLength": 1,
+                        "maxLength": 500
+                    },
+                    "is_active": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "body",
+                    "link",
+                    "minimum_code",
+                    "title"
                 ]
             },
             "AdminInactivity": {
@@ -13761,10 +12164,11 @@
                     "DELIVERY_RETRIED",
                     "PLAN_CREATED",
                     "PLAN_UPDATED",
-                    "PLAN_DELETED"
+                    "PLAN_DELETED",
+                    "FORCE_UPDATE_CHANGED"
                 ],
                 "type": "string",
-                "description": "* `USER_CREATED` - User Created\n* `USER_UPDATED` - User Updated\n* `USER_DELETED` - User Deleted\n* `USER_RESTORED` - User Restored\n* `USER_ACTIVATED` - User Activated\n* `USER_DEACTIVATED` - User Deactivated\n* `USER_SUSPENDED` - User Suspended\n* `USER_UNSUSPENDED` - User Unsuspended\n* `ROLE_CREATED` - Role Created\n* `ROLE_UPDATED` - Role Updated\n* `ROLE_DELETED` - Role Deleted\n* `ROLE_ASSIGNED` - Role Assigned\n* `ROLE_REMOVED` - Role Removed\n* `PERMISSION_CHANGED` - Permission Changed\n* `PASSWORD_RESET` - Password Reset\n* `SYSTEM_LOGS_PURGED` - System Logs Purged\n* `DELIVERY_RETRIED` - Delivery Retried\n* `PLAN_CREATED` - Plan Created\n* `PLAN_UPDATED` - Plan Updated\n* `PLAN_DELETED` - Plan Deleted"
+                "description": "* `USER_CREATED` - User Created\n* `USER_UPDATED` - User Updated\n* `USER_DELETED` - User Deleted\n* `USER_RESTORED` - User Restored\n* `USER_ACTIVATED` - User Activated\n* `USER_DEACTIVATED` - User Deactivated\n* `USER_SUSPENDED` - User Suspended\n* `USER_UNSUSPENDED` - User Unsuspended\n* `ROLE_CREATED` - Role Created\n* `ROLE_UPDATED` - Role Updated\n* `ROLE_DELETED` - Role Deleted\n* `ROLE_ASSIGNED` - Role Assigned\n* `ROLE_REMOVED` - Role Removed\n* `PERMISSION_CHANGED` - Permission Changed\n* `PASSWORD_RESET` - Password Reset\n* `SYSTEM_LOGS_PURGED` - System Logs Purged\n* `DELIVERY_RETRIED` - Delivery Retried\n* `PLAN_CREATED` - Plan Created\n* `PLAN_UPDATED` - Plan Updated\n* `PLAN_DELETED` - Plan Deleted\n* `FORCE_UPDATE_CHANGED` - Force Update Changed"
             },
             "AuthTokens": {
                 "type": "object",
@@ -14238,6 +12642,15 @@
                     "detail"
                 ]
             },
+            "DevicePlatformEnum": {
+                "enum": [
+                    "ios",
+                    "android",
+                    "web"
+                ],
+                "type": "string",
+                "description": "* `ios` - iOS\n* `android` - Android\n* `web` - Web"
+            },
             "DeviceRequest": {
                 "type": "object",
                 "properties": {
@@ -14247,7 +12660,7 @@
                         "maxLength": 512
                     },
                     "platform": {
-                        "$ref": "#/components/schemas/PlatformEnum"
+                        "$ref": "#/components/schemas/DevicePlatformEnum"
                     }
                 },
                 "required": [
@@ -14284,6 +12697,9 @@
                     "force_update": {
                         "type": "boolean"
                     },
+                    "optional_update": {
+                        "type": "boolean"
+                    },
                     "title": {
                         "type": "string",
                         "nullable": true
@@ -14302,6 +12718,7 @@
                     "body",
                     "force_update",
                     "link",
+                    "optional_update",
                     "title"
                 ]
             },
@@ -16281,15 +14698,6 @@
                     "storage_years"
                 ]
             },
-            "PlatformEnum": {
-                "enum": [
-                    "ios",
-                    "android",
-                    "web"
-                ],
-                "type": "string",
-                "description": "* `ios` - iOS\n* `android` - Android\n* `web` - Web"
-            },
             "PriorityEnum": {
                 "enum": [
                     "low",
@@ -17429,6 +15837,12 @@
                 "scheme": "bearer",
                 "bearerFormat": "JWT",
                 "description": "The `access` token from /auth/register, /auth/login or /auth/refresh (valid 15 minutes)."
+            },
+            "platformHeader": {
+                "type": "apiKey",
+                "in": "header",
+                "name": "X-Platform",
+                "description": "The client platform: `ios`, `android`, `web`. A missing or unknown value gets a 400. error.code: `invalid_platform`."
             }
         }
     },
@@ -17439,7 +15853,7 @@
         },
         {
             "name": "Auth",
-            "description": "Sign up, sign in, tokens, emailed codes and password reset."
+            "description": "Sign up, sign in, tokens, emailed codes and password reset.\n\n**Every request** sends `X-Platform`. **Any request** can get `429 throttled`: wait for `Retry-After`.\n\n**A. App start**\n\n```text\nGET /force-update?force_update_code=<build>\n  +-- force_update: true -----> Blocking update screen. Stop.\n  +-- optional_update: true --> Dismissible dialog, then continue.\n  +-- both false -------------> Continue.\n  |\n  v\nRefresh token stored?\n  +-- no ---> Sign-in screen (B or C)\n  +-- yes --> Home (D)\n```\n\n**B. Register and verify the email**\n\n```text\nPOST /auth/register {full_name, email, password}\n  +-- 400 validation_error --> Show details per field.\n  |\n  v 201 {user, access, refresh}\nStore both tokens. The user is signed in. A code is emailed.\n  |\n  v\nCode screen\n  +-- Resend --> POST /auth/otp/send {target, purpose: verify_email}\n  +-- Later ---> Home. The inbox stays empty, and support ticket\n  |              writes get 403 email_not_verified.\n  v\nPOST /auth/otp/verify {target, code, purpose: verify_email}\n  +-- 400 invalid --> Try again.\n  +-- 400 no_code, expired, attempts_exhausted --> Resend.\n  |\n  v 200 {verified: true}\nGET /me: email_verified_at is set. Home.\n```\n\n**C. Log in**\n\n```text\nPOST /auth/login {email, password}\n  +-- 400 invalid_credentials --> \"Email or password is wrong.\"\n  |\n  v 200 {user, access, refresh}\nStore both tokens.\n  +-- user.email_verified_at is null --> No code was sent. To verify:\n  |     POST /auth/otp/send, then the code screen in B.\n  v\nHome\n```\n\n**D. Any authenticated request**\n\n```text\nRequest with Authorization: Bearer <access>\n  +-- Not 401 --> Handle the response.\n  |\n  v 401 unauthorized\nPOST /auth/refresh {refresh}    (once; refresh stays the same)\n  +-- 200 {access} --------> Store access. Retry the request.\n  +-- 401 unauthorized ----> Clear tokens. Sign-in screen.\n```\n\n**E. Forgot password**\n\n```text\nPOST /auth/password/forgot {email}    (always 200)\n  |\n  v  A code is emailed.\n  +-- One screen:\n  |     POST /auth/password/reset {email, code, new_password}\n  |\n  +-- Two screens:\n        POST /auth/otp/verify {target, code, purpose: reset_password}\n          v 200 {verified: true, reset_token}\n        POST /auth/password/reset\n             {email, code: <reset_token>, new_password}\n\nResult of /auth/password/reset:\n  +-- 400 validation_error ----> Code still valid. Ask for a new password.\n  +-- 400 invalid -------------> Try again.\n  +-- 400 no_code, expired, attempts_exhausted,\n  |       invalid_reset_token -> Start again from /auth/password/forgot.\n  +-- 200 ---------------------> Every session is revoked.\n                                 Clear tokens. Sign-in screen.\n```\n\n**F. Log out**\n\n```text\nPOST /auth/logout {refresh} with Authorization: Bearer <access>\n  +-- 200, or 400 invalid_token --> Clear tokens. Sign-in screen.\n```"
         },
         {
             "name": "Me",

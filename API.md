@@ -25,7 +25,7 @@ Contents:
 | Local | `http://localhost:8000/api/v1` |
 | Format | JSON in, JSON out (`Content-Type: application/json`). The only exceptions are the media upload (raw bytes) and download (the file). |
 | Trailing slash | Optional: `/me` and `/me/` are the same endpoint. |
-| `X-Platform` header | Required on every request: `ios`, `android` or `web`. Not needed on `/health`, `/schema`, `/docs`, `/redoc` or the signed `/media/{id}/file` URL. A missing or unknown value gets `400 invalid_platform`. |
+| `X-Platform` header | Required on every request: `ios`, `android` or `web`. Not needed on `/health`, `/schema`, `/docs`, `/redoc` or the signed `/media/{id}/file` URL. A missing or unknown value gets `400 invalid_platform`. In Swagger UI, set it once under Authorize (`platformHeader`). |
 | Ids | UUID strings, except notification ids, which are integers sent as strings (`"12"`). |
 | Dates | ISO-8601 in UTC, for example `2026-10-31T09:00:00Z` or `2026-10-31T09:00:00.123456Z`. Send dates the same way. |
 | Swagger UI | `/api/v1/docs` (live server) and [`docs/swagger.html`](swagger.html) (standalone interactive viewer) |
@@ -99,6 +99,106 @@ The two media file endpoints are the exception to the envelope:
 `GET /media/{id}/file` returns the file itself.
 
 ## 3. Authentication
+
+### 3.1 Flows
+
+**Every request** sends `X-Platform`. **Any request** can get `429 throttled`: wait for `Retry-After`.
+
+**A. App start**
+
+```text
+GET /force-update?force_update_code=<build>
+  +-- force_update: true -----> Blocking update screen. Stop.
+  +-- optional_update: true --> Dismissible dialog, then continue.
+  +-- both false -------------> Continue.
+  |
+  v
+Refresh token stored?
+  +-- no ---> Sign-in screen (B or C)
+  +-- yes --> Home (D)
+```
+
+**B. Register and verify the email**
+
+```text
+POST /auth/register {full_name, email, password}
+  +-- 400 validation_error --> Show details per field.
+  |
+  v 201 {user, access, refresh}
+Store both tokens. The user is signed in. A code is emailed.
+  |
+  v
+Code screen
+  +-- Resend --> POST /auth/otp/send {target, purpose: verify_email}
+  +-- Later ---> Home. The inbox stays empty, and support ticket
+  |              writes get 403 email_not_verified.
+  v
+POST /auth/otp/verify {target, code, purpose: verify_email}
+  +-- 400 invalid --> Try again.
+  +-- 400 no_code, expired, attempts_exhausted --> Resend.
+  |
+  v 200 {verified: true}
+GET /me: email_verified_at is set. Home.
+```
+
+**C. Log in**
+
+```text
+POST /auth/login {email, password}
+  +-- 400 invalid_credentials --> "Email or password is wrong."
+  |
+  v 200 {user, access, refresh}
+Store both tokens.
+  +-- user.email_verified_at is null --> No code was sent. To verify:
+  |     POST /auth/otp/send, then the code screen in B.
+  v
+Home
+```
+
+**D. Any authenticated request**
+
+```text
+Request with Authorization: Bearer <access>
+  +-- Not 401 --> Handle the response.
+  |
+  v 401 unauthorized
+POST /auth/refresh {refresh}    (once; refresh stays the same)
+  +-- 200 {access} --------> Store access. Retry the request.
+  +-- 401 unauthorized ----> Clear tokens. Sign-in screen.
+```
+
+**E. Forgot password**
+
+```text
+POST /auth/password/forgot {email}    (always 200)
+  |
+  v  A code is emailed.
+  +-- One screen:
+  |     POST /auth/password/reset {email, code, new_password}
+  |
+  +-- Two screens:
+        POST /auth/otp/verify {target, code, purpose: reset_password}
+          v 200 {verified: true, reset_token}
+        POST /auth/password/reset
+             {email, code: <reset_token>, new_password}
+
+Result of /auth/password/reset:
+  +-- 400 validation_error ----> Code still valid. Ask for a new password.
+  +-- 400 invalid -------------> Try again.
+  +-- 400 no_code, expired, attempts_exhausted,
+  |       invalid_reset_token -> Start again from /auth/password/forgot.
+  +-- 200 ---------------------> Every session is revoked.
+                                 Clear tokens. Sign-in screen.
+```
+
+**F. Log out**
+
+```text
+POST /auth/logout {refresh} with Authorization: Bearer <access>
+  +-- 200, or 400 invalid_token --> Clear tokens. Sign-in screen.
+```
+
+### 3.2 Tokens
 
 Register (`POST /auth/register`) and log in (`POST /auth/login`) both return:
 
@@ -1096,32 +1196,54 @@ Outside the RAML, the support app also serves `/legal` and `/legal/{slug}`
 code `error` when the database is down.
 
 `GET /force-update?force_update_code=5` (no auth) says whether this build must
-update. `force_update_code` is the integer build code from the app's pubspec
-YAML, 1 or higher. Otherwise the response is `400 validation_error`. The server
-compares the code with the minimum code for the `X-Platform` platform, set in
-the Django admin.
+or may update. `force_update_code` is the integer build code from the app's
+pubspec YAML, 1 or higher. Otherwise the response is `400 validation_error`. The
+server compares the code with the minimum and latest codes for the `X-Platform`
+platform, set in the Django admin.
 
-A code below the minimum:
+A code below the minimum. The app must block until the user updates:
 
 ```json
 {
   "force_update": true,
+  "optional_update": false,
   "title": "Update required",
   "body": "Please update to continue.",
   "link": "https://apps.apple.com/app/id1"
 }
 ```
 
-A code at or above the minimum, or a platform with no active minimum:
+A code at or above the minimum but below the latest. The app may let the user
+dismiss the message. Both cases share one title, body and link:
 
 ```json
 {
   "force_update": false,
+  "optional_update": true,
+  "title": "Update required",
+  "body": "Please update to continue.",
+  "link": "https://apps.apple.com/app/id1"
+}
+```
+
+Any other code, or a platform with no active rule:
+
+```json
+{
+  "force_update": false,
+  "optional_update": false,
   "title": null,
   "body": null,
   "link": null
 }
 ```
+
+The Django admin is not the only place to set these codes. Staff can use
+`GET /admin/control/force-update` (permission `force_update.read`) and
+`PUT /admin/control/force-update/{ios|android}` (permission
+`force_update.update`), which take `minimum_code`, `latest_code`, `title`,
+`body`, `link` and `is_active`. `latest_code` is optional: null offers no
+optional update, and leaving it out keeps the stored value.
 
 Endpoints under `/admin/...`, `/support/admin/...` and
 `/notifications/admin/send` belong to the admin console and need RBAC
